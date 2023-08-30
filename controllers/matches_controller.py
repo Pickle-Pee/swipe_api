@@ -48,10 +48,8 @@ def find_matches(access_token: str = Depends(get_token)):
 
         for other_user in all_users:
             other_interests_obj = db.query(UserInterest).filter(UserInterest.user_id == other_user.id).all()
-            if not other_interests_obj:
-                continue
 
-            other_interests = set([oi.interest_id for oi in other_interests_obj])
+            other_interests = set([oi.interest_id for oi in other_interests_obj]) if other_interests_obj else set()
 
             common_interests = user_interests.intersection(other_interests)
             total_interests = user_interests.union(other_interests)
@@ -62,14 +60,17 @@ def find_matches(access_token: str = Depends(get_token)):
             else:
                 match_percentage = 0.0
 
-            matches.append(MatchResponse(
-                user_id=other_user.id,
-                first_name=other_user.first_name,
-                last_name=other_user.last_name,
-                date_of_birth=other_user.date_of_birth,
-                gender=other_user.gender if other_user.gender is not None else "Unknown",
-                verify=other_user.verify,
-                match_percentage=match_percentage))
+            matches.append(
+                MatchResponse(
+                    user_id=other_user.id,
+                    first_name=other_user.first_name,
+                    last_name=other_user.last_name,
+                    date_of_birth=other_user.date_of_birth,
+                    gender=other_user.gender if other_user.gender is not None else "Unknown",
+                    verify=other_user.verify,
+                    match_percentage=match_percentage
+                )
+            )
 
         # Сортируем по проценту совпадений
         matches = sorted(matches, key=lambda x: x.match_percentage, reverse=True)
