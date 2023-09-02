@@ -24,7 +24,8 @@ def get_user(access_token: str = Depends(get_token)):
                     "last_name": user.last_name if user.last_name else None,
                     "date_of_birth": user.date_of_birth if user.date_of_birth else None,
                     "gender": user.gender if user.gender else None,
-                    "verify": user.verify
+                    "verify": user.verify,
+                    "is_subscription": user.is_subscription
                 }
                 return user_data
             else:
@@ -48,7 +49,8 @@ def get_all_users():
                     "last_name": user.last_name,
                     "date_of_birth": user.date_of_birth,
                     "gender": user.gender,
-                    "verify": user.verify
+                    "verify": user.verify,
+                    "is_subscription": user.is_subscription
                 }
                 for user in users
             ]

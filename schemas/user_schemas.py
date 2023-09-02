@@ -43,3 +43,4 @@ class UserDataResponse(BaseModel):
     date_of_birth: Optional[date] = None
     gender: Optional[str] = None
     verify: bool
+    is_subscription: bool
