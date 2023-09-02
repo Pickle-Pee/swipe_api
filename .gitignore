@@ -3,3 +3,4 @@ ecosystem.config.js
 /venv
 .idea
 .DS_Store
+__pycache__
