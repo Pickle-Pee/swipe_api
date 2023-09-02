@@ -1,8 +1,8 @@
 import jwt
 from fastapi import Depends, HTTPException
 from config import SECRET_KEY, SessionLocal
-from models.user_models import User
-from utils.auth_utils import get_token
+from common.models.user_models import User
+from common.utils.auth_utils import get_token
 
 
 def get_current_user(token: str = Depends(get_token)):

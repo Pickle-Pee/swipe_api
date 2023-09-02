@@ -1,11 +1,11 @@
 from fastapi import HTTPException, APIRouter, Depends
 from fastapi.responses import JSONResponse
 from config import SessionLocal, logger, SECRET_KEY
-from models.user_models import User
-from models.interests_models import Interest, UserInterest
-from models.error_models import ErrorResponse
-from schemas.interests_schemas import AddInterestsRequest, InterestResponse, UserInterestResponse
-from utils.auth_utils import get_token, get_user_id_from_token
+from common.models.user_models import User
+from common.models.interests_models import Interest, UserInterest
+from common.models.error_models import ErrorResponse
+from common.schemas.interests_schemas import AddInterestsRequest, InterestResponse, UserInterestResponse
+from common.utils.auth_utils import get_token, get_user_id_from_token
 
 router = APIRouter(prefix="/interest", tags=["Interests Controller"])
 

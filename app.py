@@ -3,12 +3,12 @@
 
 import os
 from fastapi import FastAPI
-from controllers.auth_controller import router as auth_router
-from controllers.user_controller import router as user_router
-from controllers.interests_controller import router as interests_router
-from controllers.matches_controller import router as matches_router
-from controllers.likes_controller import router as likes_router
-from controllers.subscription_controller import router as subscription_router
+from main_app.controllers.auth_controller import router as auth_router
+from main_app.controllers.user_controller import router as user_router
+from main_app.controllers.interests_controller import router as interests_router
+from matches_app.controllers.matches_controller import router as matches_router
+from main_app.controllers.likes_controller import router as likes_router
+from main_app.controllers.subscription_controller import router as subscription_router
 
 app = FastAPI()
 

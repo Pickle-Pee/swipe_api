@@ -1,12 +1,12 @@
 from fastapi import HTTPException, status, APIRouter, Depends
 from fastapi.responses import JSONResponse
-from models.auth_models import TemporaryCode, RefreshToken
-from models.user_models import User
-from models.error_models import ErrorResponse
-from schemas.auth_schemas import TokenResponse, CheckCodeResponse, VerificationResponse
-from schemas.user_schemas import UserCreate, UserIdResponse
+from common.models.auth_models import TemporaryCode, RefreshToken
+from common.models.user_models import User
+from common.models.error_models import ErrorResponse
+from common.schemas.auth_schemas import TokenResponse, CheckCodeResponse, VerificationResponse
+from common.schemas.user_schemas import UserCreate, UserIdResponse
 from config import SessionLocal, SECRET_KEY
-from utils.auth_utils import create_refresh_token, create_access_token, validate_phone_number, get_token, \
+from common.utils.auth_utils import create_refresh_token, create_access_token, validate_phone_number, get_token, \
     get_user_id_from_token
 import jwt
 

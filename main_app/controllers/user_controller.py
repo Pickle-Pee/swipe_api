@@ -1,9 +1,9 @@
 from fastapi import HTTPException, APIRouter, Depends
 from typing import List
 from config import SessionLocal, SECRET_KEY
-from models.user_models import User
-from schemas.user_schemas import UserDataResponse
-from utils.auth_utils import get_token, get_user_id_from_token
+from common.models.user_models import User
+from common.schemas.user_schemas import UserDataResponse
+from common.utils.auth_utils import get_token, get_user_id_from_token
 import traceback
 
 

@@ -1,8 +1,8 @@
 from datetime import timedelta, datetime
 from fastapi import Depends, APIRouter, HTTPException
-from models.likes_models import Like, Dislike
+from common.models.likes_models import Like, Dislike
 from config import SessionLocal, SECRET_KEY
-from utils.auth_utils import get_token, get_user_id_from_token
+from common.utils.auth_utils import get_token, get_user_id_from_token
 
 router = APIRouter(prefix="/likes", tags=["Likes Controller"])
 
