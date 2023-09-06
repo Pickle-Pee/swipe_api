@@ -10,7 +10,7 @@ class UserCreate(BaseModel):
     date_of_birth: date
     gender: str
     verify: bool = False
-    # is_subscription: bool = False
+    city: Optional[str] = None
 
     @field_validator("phone_number")
     def validate_phone_number(cls, value):
@@ -44,3 +44,6 @@ class UserDataResponse(BaseModel):
     gender: Optional[str] = None
     verify: bool
     is_subscription: bool
+    city: Optional[str] = None
+    is_favorite: Optional[bool] = False
+    match_percentage: Optional[int] = 0

@@ -15,6 +15,7 @@ class User(Base):
     gender = Column(String)
     verify = Column(Boolean)
     is_subscription = Column(Boolean)
+    city = Column(String)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow)
 

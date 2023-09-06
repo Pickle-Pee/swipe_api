@@ -1,5 +1,7 @@
 from fastapi import HTTPException, APIRouter, Depends
 from typing import List
+
+from common.models import UserInterest
 from config import SessionLocal, SECRET_KEY
 from common.models.user_models import User
 from common.schemas.user_schemas import UserDataResponse
@@ -17,6 +19,20 @@ def get_user(access_token: str = Depends(get_token)):
             user_id = get_user_id_from_token(access_token, SECRET_KEY)
             user = db.query(User).filter(User.id == user_id).first()
             if user:
+                # Получение интересов текущего пользователя
+                user_interests_obj = db.query(UserInterest).filter(UserInterest.user_id == user_id).all()
+                user_interests = set([ui.interest_id for ui in user_interests_obj])
+
+                # Вычисление процента совпадений (в данном случае с самим собой)
+                common_interests = user_interests.intersection(user_interests)
+                total_interests = user_interests.union(user_interests)
+
+                if total_interests:
+                    match_percentage = (len(common_interests) / len(total_interests)) * 100
+                    match_percentage = round(match_percentage, 2)
+                else:
+                    match_percentage = 0.0
+
                 user_data = {
                     "id": user.id,
                     "phone_number": user.phone_number,
@@ -25,7 +41,8 @@ def get_user(access_token: str = Depends(get_token)):
                     "date_of_birth": user.date_of_birth if user.date_of_birth else None,
                     "gender": user.gender if user.gender else None,
                     "verify": user.verify,
-                    "is_subscription": user.is_subscription
+                    "is_subscription": user.is_subscription,
+                    "match_percentage": match_percentage  # Добавляем процент совпадений
                 }
                 return user_data
             else:
@@ -58,6 +75,3 @@ def get_all_users():
         except Exception as e:
             print("Error retrieving users:", e)
             raise HTTPException(status_code=500, detail="Internal server error")
-
-
-

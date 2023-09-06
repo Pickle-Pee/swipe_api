@@ -20,3 +20,11 @@ class Dislike(Base):
     user_id = Column(Integer, ForeignKey('users.id'))
     disliked_user_id = Column(Integer, ForeignKey('users.id'))
     timestamp = Column(DateTime, default=datetime.utcnow)
+
+
+class Favorite(Base):
+    __tablename__ = 'favorites'
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
+    favorite_user_id = Column(Integer, ForeignKey('users.id'), nullable=False)

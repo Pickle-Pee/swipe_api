@@ -5,20 +5,25 @@ services:
     ports:
       - "1024:1024"
     environment:
-      - PYTHONPATH=/app/common
+      - PYTHONPATH=/app
+#      - DATABASE_URL=${DATABASE_URL}
     volumes:
       - ./common:/app/common
       - ./config.py:/app/config.py
+    networks:
+      - swipe_network
     env_file:
       - .env
-  matches_app:
-    build: ./matches_app
-    ports:
-      - "1025:1025"
-    environment:
-      - PYTHONPATH=/app/common
-    volumes:
-      - ./common:/app/common
-      - ./config.py:/app/config.py
-    env_file:
-      - .env
+
+#  db:
+#    image: postgres:latest
+#    environment:
+#      - POSTGRES_USER=${POSTGRES_USER}
+#      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+#      - POSTGRES_DB=${POSTGRES_DB}
+#    networks:
+#      - swipe_network
+
+networks:
+  swipe_network:
+    driver: bridge
