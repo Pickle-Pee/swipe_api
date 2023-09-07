@@ -12,5 +12,4 @@ class MatchResponse(BaseModel):
     gender: str
     verify: bool = False
     city: Optional[str] = None
-    match_percentage: int = 0
     score: int

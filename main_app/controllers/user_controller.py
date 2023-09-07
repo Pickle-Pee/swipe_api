@@ -1,6 +1,10 @@
 from fastapi import HTTPException, APIRouter, Depends
 from typing import List
-from common.models.interests_models import UserInterest
+
+from sqlalchemy import text
+
+from common.models.cities_models import City
+from common.models.interests_models import Interest
 from config import SessionLocal, SECRET_KEY
 from common.models.user_models import User
 from common.schemas.user_schemas import UserDataResponse
@@ -18,19 +22,67 @@ def get_user(access_token: str = Depends(get_token)):
             user_id = get_user_id_from_token(access_token, SECRET_KEY)
             user = db.query(User).filter(User.id == user_id).first()
             if user:
-                # Получение интересов текущего пользователя
-                user_interests_obj = db.query(UserInterest).filter(UserInterest.user_id == user_id).all()
-                user_interests = set([ui.interest_id for ui in user_interests_obj])
+                interests_list = [i.interest_text for i in db.query(Interest).all()]
+                cities_list = [c.city_name for c in db.query(City).all()]
 
-                # Вычисление процента совпадений (в данном случае с самим собой)
-                common_interests = user_interests.intersection(user_interests)
-                total_interests = user_interests.union(user_interests)
+                interests_str = ', '.join(["'%s'" % i for i in interests_list])
+                cities_str = ', '.join(["'%s'" % c for c in cities_list])
 
-                if total_interests:
-                    match_percentage = (len(common_interests) / len(total_interests)) * 100
-                    match_percentage = round(match_percentage, 2)
-                else:
-                    match_percentage = 0.0
+                sql_query = text(f"""
+                SELECT 
+                    users.id,
+                    users.first_name,
+                    users.last_name,
+                    users.date_of_birth,
+                    users.gender,
+                    users.city_id,
+                    users.verify,
+                    cities.city_name,
+                    SUM(
+                        CASE 
+                            WHEN interests.interest_text IN ({interests_str}) THEN 3
+                            ELSE 0
+                        END +
+                        CASE 
+                            WHEN likes.liked_user_id = users.id AND likes.user_id = :user_id THEN 2
+                            ELSE 0
+                        END +
+                        CASE 
+                            WHEN dislikes.disliked_user_id = users.id AND dislikes.user_id = :user_id THEN -1
+                            ELSE 0
+                        END +
+                        CASE 
+                            WHEN favorites.favorite_user_id = users.id AND favorites.user_id = :user_id THEN 4
+                            ELSE 0
+                        END +
+                        CASE 
+                            WHEN cities.city_name IN ({cities_str}) THEN 1
+                            ELSE 0
+                        END
+                    ) AS score
+                FROM 
+                    users
+                LEFT JOIN 
+                    user_interests ON users.id = user_interests.user_id
+                LEFT JOIN 
+                    interests ON user_interests.interest_id = interests.id
+                LEFT JOIN 
+                    likes ON users.id = likes.liked_user_id
+                LEFT JOIN 
+                    dislikes ON users.id = dislikes.disliked_user_id
+                LEFT JOIN 
+                    favorites ON users.id = favorites.favorite_user_id
+                LEFT JOIN 
+                    cities ON users.city_id = cities.id
+                WHERE 
+                    users.id = :user_id  -- Это новое условие
+                GROUP BY 
+                    users.id, users.first_name, users.last_name, cities.city_name;
+
+                """)
+
+                result = db.execute(sql_query, {'user_id': user_id}).fetchone()
+                score = result.score if result else 0  # Извлекаем значение score
 
                 user_data = {
                     "id": user.id,
@@ -41,7 +93,7 @@ def get_user(access_token: str = Depends(get_token)):
                     "gender": user.gender if user.gender else None,
                     "verify": user.verify,
                     "is_subscription": user.is_subscription,
-                    "match_percentage": match_percentage  # Добавляем процент совпадений
+                    "score": score  # Добавляем score
                 }
                 return user_data
             else:
@@ -50,7 +102,6 @@ def get_user(access_token: str = Depends(get_token)):
             traceback.print_exc()
             print("Error retrieving user:", e)
             raise HTTPException(status_code=500, detail="Internal server error")
-
 
 @router.get("/all_users", response_model=List[UserDataResponse], summary="Получение списка всех пользователей")
 def get_all_users():

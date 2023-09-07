@@ -84,7 +84,7 @@ def find_matches(access_token: str = Depends(get_token)):
         GROUP BY 
             users.id, users.first_name, users.last_name, cities.city_name
         ORDER BY 
-            score DESC
+            score DESC NULLS LAST
         LIMIT 10;
         """)
 
@@ -99,8 +99,7 @@ def find_matches(access_token: str = Depends(get_token)):
                 gender=row.gender if row.gender is not None else "Unknown",
                 verify=row.verify,
                 city=row.city_name if row.city_id else None,
-                # match_percentage=row.match_percentage,
-                score=row.score
+                score=row.score if row.score is not None else 0
             )
             for row in result
         ]

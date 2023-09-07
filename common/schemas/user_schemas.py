@@ -46,4 +46,3 @@ class UserDataResponse(BaseModel):
     is_subscription: bool
     city_id: Optional[str] = None
     is_favorite: Optional[bool] = False
-    match_percentage: Optional[int] = 0
