@@ -1,7 +1,6 @@
 from fastapi import HTTPException, APIRouter, Depends
 from typing import List
-
-from common.models import UserInterest
+from common.models.interests_models import UserInterest
 from config import SessionLocal, SECRET_KEY
 from common.models.user_models import User
 from common.schemas.user_schemas import UserDataResponse

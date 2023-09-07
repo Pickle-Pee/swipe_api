@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, Date, Boolean
+from sqlalchemy import Column, Integer, String, DateTime, Date, Boolean, ForeignKey
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from config import Base
@@ -15,11 +15,12 @@ class User(Base):
     gender = Column(String)
     verify = Column(Boolean)
     is_subscription = Column(Boolean)
-    city = Column(String)
+    city_id = Column(Integer, ForeignKey('cities.id'))
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow)
 
     refresh_tokens = relationship("RefreshToken", back_populates="user")
     interests = relationship("UserInterest", back_populates="user")
+    city = relationship("City")
 
 
