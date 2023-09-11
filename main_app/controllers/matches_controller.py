@@ -6,12 +6,9 @@ from sqlalchemy import text
 from common.models.cities_models import City
 from common.schemas.match_schemas import MatchResponse
 from common.models.user_models import User
-from common.models.interests_models import UserInterest, Interest
-from common.models.likes_models import Like, Dislike
+from common.models.interests_models import Interest
 from common.utils.auth_utils import get_token, get_user_id_from_token
 from config import SessionLocal, SECRET_KEY
-from datetime import datetime
-import numpy as np
 
 
 router = APIRouter(prefix="/match", tags=["Matches Controller"])
@@ -42,6 +39,8 @@ def find_matches(access_token: str = Depends(get_token)):
             users.gender,
             users.city_id,
             users.verify,
+            users.avatar_url,
+            users.status,
             cities.city_name,
             SUM(
                 CASE 
@@ -94,12 +93,11 @@ def find_matches(access_token: str = Depends(get_token)):
             MatchResponse(
                 user_id=row.id,
                 first_name=row.first_name,
-                last_name=row.last_name,
                 date_of_birth=row.date_of_birth,
                 gender=row.gender if row.gender is not None else "Unknown",
-                verify=row.verify,
-                city=row.city_name if row.city_id else None,
-                score=row.score if row.score is not None else 0
+                status=row.status,
+                city_name=row.city_name,
+                avatar_url=row.avatar_url
             )
             for row in result
         ]
