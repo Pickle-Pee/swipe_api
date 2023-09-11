@@ -1,6 +1,6 @@
 from datetime import date, datetime
 from pydantic import BaseModel, field_validator
-from typing import Optional
+from typing import Optional, List
 
 
 class UserCreate(BaseModel):
@@ -49,4 +49,5 @@ class UserDataResponse(BaseModel):
     about_me: Optional[str] = None
     status: Optional[str] = None
     avatar_url: Optional[str] = None
+    interests: Optional[List[str]] = None
     score: Optional[int] = None

@@ -4,7 +4,7 @@ from typing import List, Optional
 from sqlalchemy import text
 
 from common.models.cities_models import City
-from common.models.interests_models import Interest
+from common.models.interests_models import Interest, UserInterest
 from config import SessionLocal, SECRET_KEY
 from common.models.user_models import User
 from common.schemas.user_schemas import UserDataResponse
@@ -24,6 +24,9 @@ def get_current_user(access_token: str = Depends(get_token)):
             user = db.query(User).filter(User.id == user_id).first()
             city = db.query(City).filter(City.id == user.city_id).first()
             city_name = city.city_name if city else None
+            user_interests = db.query(UserInterest).filter(UserInterest.user_id == user_id).all()
+            interests = [db.query(Interest).filter(Interest.id == ui.interest_id).first().interest_text for ui in
+                         user_interests]
             if user:
                 return {
                     "id": user.id,
@@ -34,6 +37,7 @@ def get_current_user(access_token: str = Depends(get_token)):
                     "verify": user.verify,
                     "is_subscription": user.is_subscription,
                     "city_name": city_name,
+                    "interests": interests,
                     "about_me": user.about_me
                 }
             else:
@@ -114,6 +118,10 @@ def get_user(user_id: Optional[int] = None, access_token: str = Depends(get_toke
                 result = db.execute(sql_query, {'user_id': user_id}).fetchone()
                 score = result.score if result else 0
 
+                user_interests = db.query(UserInterest).filter(UserInterest.user_id == user_id).all()
+                interests = [db.query(Interest).filter(Interest.id == ui.interest_id).first().interest_text for ui in
+                             user_interests]
+
                 return {
                     "id": user.id,
                     "first_name": user.first_name if user.first_name else None,
@@ -125,6 +133,7 @@ def get_user(user_id: Optional[int] = None, access_token: str = Depends(get_toke
                     "about_me": user.about_me,
                     "status": user.status,
                     "city_name": result.city_name if result else None,
+                    "interests": interests,
                     "score": score
                 }
             else:
