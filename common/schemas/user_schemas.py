@@ -51,3 +51,16 @@ class UserDataResponse(BaseModel):
     avatar_url: Optional[str] = None
     interests: Optional[List[str]] = None
     match_percentage: Optional[int] = None
+
+
+class UserLikesResponse(BaseModel):
+    id: int
+    first_name: Optional[str] = None
+    date_of_birth: Optional[date] = None
+    city_name: Optional[str] = None
+    is_favorite: Optional[bool] = False
+    about_me: Optional[str] = None
+    status: Optional[str] = None
+    avatar_url: Optional[str] = None
+    match_percentage: Optional[int] = None
+

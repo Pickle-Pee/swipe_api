@@ -139,7 +139,8 @@ def register(user_data: UserCreate):
                 last_name=user_data.last_name,
                 date_of_birth=user_data.date_of_birth,
                 gender=user_data.gender,
-                verify=user_data.verify
+                verify=user_data.verify,
+                city_id=user_data.city_id
             )
 
             # Добавление данных пользователя в базу данных
@@ -149,7 +150,8 @@ def register(user_data: UserCreate):
                 last_name=new_user_data.last_name,
                 date_of_birth=new_user_data.date_of_birth,
                 gender=new_user_data.gender,
-                verify=user_data.verify
+                verify=user_data.verify,
+                city_id=user_data.city_id
             )
             db.add(new_user)
             db.commit()
@@ -181,8 +183,8 @@ def login(phone_number: str, code: str):
 
             if not validate_phone_number(phone_number):
                 return JSONResponse(
-                    content={"message": "Некорректный номер телефона", "code": 666}, status_code=status.HTTP_400_BAD_REQUEST
-                )
+                    content={"message": "Некорректный номер телефона", "code": 666},
+                    status_code=status.HTTP_400_BAD_REQUEST)
 
             # Проверка кода в базе данных
             stored_code = db.query(TemporaryCode).filter_by(phone_number=phone_number, code=code).first()
@@ -220,6 +222,8 @@ def login(phone_number: str, code: str):
             token_response = TokenResponse(access_token=f"Bearer {access_token}", refresh_token=refresh_token)
 
             return token_response
+        except HTTPException as he:
+            raise he
         except Exception as e:
             print("Error logging in:", e)
             raise HTTPException(status_code=500, detail="Error logging in")

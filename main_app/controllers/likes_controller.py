@@ -1,12 +1,12 @@
 from datetime import timedelta, datetime
 from typing import List
-
+from sqlalchemy.orm import joinedload
 from fastapi import Depends, APIRouter, HTTPException
 from common.models.likes_models import Like, Dislike, Favorite
 from config import SessionLocal, SECRET_KEY
 from common.schemas.likes_schemas import FavoriteCreate
 from common.models.user_models import User
-from common.schemas.user_schemas import UserDataResponse
+from common.schemas.user_schemas import UserDataResponse, UserLikesResponse
 from common.utils.auth_utils import get_token, get_user_id_from_token
 
 router = APIRouter(prefix="/likes", tags=["Likes Controller"])
@@ -80,16 +80,17 @@ def add_to_favorites(user_id: int, access_token: str = Depends(get_token)):
         return db_favorite
 
 
-@router.get("/favorites", response_model=List[UserDataResponse], summary="Список избранных")
+@router.get("/favorites", response_model=List[UserLikesResponse], summary="Список избранных")
 def get_favorites(access_token: str = Depends(get_token)):
     with SessionLocal() as db:
         current_user_id = get_user_id_from_token(access_token, SECRET_KEY)
-        favorites = db.query(User).join(Favorite, User.id == Favorite.favorite_user_id).filter(Favorite.user_id
-                                                                                               == current_user_id).all()
+        favorites = db.query(User).options(joinedload(User.interests)).join(
+            Favorite, User.id == Favorite.favorite_user_id).filter(
+            Favorite.user_id == current_user_id).all()
         return favorites
 
 
-@router.get("/liked_me", response_model=List[UserDataResponse], summary="Список пользователей, лайкнувших меня")
+@router.get("/liked_me", response_model=List[UserLikesResponse], summary="Список пользователей, лайкнувших меня")
 def get_liked_by(access_token: str = Depends(get_token)):
     with SessionLocal() as db:
         current_user_id = get_user_id_from_token(access_token, SECRET_KEY)
@@ -98,7 +99,7 @@ def get_liked_by(access_token: str = Depends(get_token)):
         return liked_by_users
 
 
-@router.get("/liked_users", response_model=List[UserDataResponse], summary="Список пользователей, которых лайнкул я")
+@router.get("/liked_users", response_model=List[UserLikesResponse], summary="Список пользователей, которых лайнкул я")
 def get_liked_users(access_token: str = Depends(get_token)):
     with SessionLocal() as db:
         current_user_id = get_user_id_from_token(access_token, SECRET_KEY)
