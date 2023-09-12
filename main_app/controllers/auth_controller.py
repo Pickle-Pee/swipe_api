@@ -68,7 +68,7 @@ def check_verification_code(phone_number: str, verification_code: str):
                                 detail="Error checking verification code")
 
 
-@router.post("/check_phone", summary="Валидация номера телефона", response_model=ErrorResponse)
+@router.post("/check_phone", summary="Валидация номера телефона")
 def validate_phone(phone_number: str):
     with SessionLocal() as db:
         try:
@@ -77,14 +77,10 @@ def validate_phone(phone_number: str):
                 error_response = ErrorResponse(detail="Некорректный номер телефона", code=666)
                 return JSONResponse(content=error_response.dict(), status_code=400)
 
-
             # Проверяем, зарегистрирован ли номер телефона
             query = db.query(User).filter_by(phone_number=phone_number).first()
             if query:
                 error_response = ErrorResponse(detail="Пользователь зарегистрирован.", code=612)
-                return JSONResponse(content=error_response.dict(), status_code=400)
-            else:
-                error_response = ErrorResponse(detail="Пользователь не зарегистрирован.", code=614)
                 return JSONResponse(content=error_response.dict(), status_code=400)
 
         except Exception as e:
