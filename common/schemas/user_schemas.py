@@ -50,4 +50,4 @@ class UserDataResponse(BaseModel):
     status: Optional[str] = None
     avatar_url: Optional[str] = None
     interests: Optional[List[str]] = None
-    score: Optional[int] = None
+    match_percentage: Optional[int] = None

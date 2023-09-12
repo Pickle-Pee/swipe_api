@@ -63,60 +63,43 @@ def get_user(user_id: Optional[int] = None, access_token: str = Depends(get_toke
                 cities_str = ', '.join(["'%s'" % c for c in cities_list])
 
                 sql_query = text(f"""
-                SELECT 
-                    users.id,
-                    users.first_name,
-                    users.last_name,
-                    users.date_of_birth,
-                    users.gender,
-                    users.city_id,
-                    users.verify,
-                    cities.city_name,
-                    SUM(
-                        CASE 
-                            WHEN interests.interest_text IN ({interests_str}) THEN 3
-                            ELSE 0
-                        END +
-                        CASE 
-                            WHEN likes.liked_user_id = users.id AND likes.user_id = :user_id THEN 2
-                            ELSE 0
-                        END +
-                        CASE 
-                            WHEN dislikes.disliked_user_id = users.id AND dislikes.user_id = :user_id THEN -1
-                            ELSE 0
-                        END +
-                        CASE 
-                            WHEN favorites.favorite_user_id = users.id AND favorites.user_id = :user_id THEN 4
-                            ELSE 0
-                        END +
-                        CASE 
-                            WHEN cities.city_name IN ({cities_str}) THEN 1
-                            ELSE 0
-                        END
-                    ) AS score
-                FROM 
-                    users
-                LEFT JOIN 
-                    user_interests ON users.id = user_interests.user_id
-                LEFT JOIN 
-                    interests ON user_interests.interest_id = interests.id
-                LEFT JOIN 
-                    likes ON users.id = likes.liked_user_id
-                LEFT JOIN 
-                    dislikes ON users.id = dislikes.disliked_user_id
-                LEFT JOIN 
-                    favorites ON users.id = favorites.favorite_user_id
-                LEFT JOIN 
-                    cities ON users.city_id = cities.id
-                WHERE 
-                    users.id = :user_id
-                GROUP BY 
-                    users.id, users.first_name, users.last_name, cities.city_name;
-
-                """)
+                    SELECT 
+                        users.id,
+                        users.first_name,
+                        users.last_name,
+                        users.date_of_birth,
+                        users.gender,
+                        users.city_id,
+                        users.verify,
+                        cities.city_name,
+                        ROUND(
+                            (SUM(
+                                CASE 
+                                    WHEN interests.interest_text IN ({interests_str}) THEN 3
+                                    ELSE 0
+                                END +
+                                CASE 
+                                    WHEN cities.city_name IN ({cities_str}) THEN 1
+                                    ELSE 0
+                                END
+                            ) / 49.0) * 100
+                        ) AS match_percentage
+                    FROM 
+                        users
+                    LEFT JOIN 
+                        user_interests ON users.id = user_interests.user_id
+                    LEFT JOIN 
+                        interests ON user_interests.interest_id = interests.id
+                    LEFT JOIN 
+                        cities ON users.city_id = cities.id
+                    WHERE 
+                        users.id = :user_id
+                    GROUP BY 
+                        users.id, users.first_name, users.last_name, cities.city_name;
+                                """)
 
                 result = db.execute(sql_query, {'user_id': user_id}).fetchone()
-                score = result.score if result else 0
+                match_percentage = int(result.match_percentage) if result else 0
 
                 user_interests = db.query(UserInterest).filter(UserInterest.user_id == user_id).all()
                 interests = [db.query(Interest).filter(Interest.id == ui.interest_id).first().interest_text for ui in
@@ -134,7 +117,8 @@ def get_user(user_id: Optional[int] = None, access_token: str = Depends(get_toke
                     "status": user.status,
                     "city_name": result.city_name if result else None,
                     "interests": interests,
-                    "score": score
+                    "match_percentage": match_percentage
+
                 }
             else:
                 raise HTTPException(status_code=404, detail="Пользователь не найден")
