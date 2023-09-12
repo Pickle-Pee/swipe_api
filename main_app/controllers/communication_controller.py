@@ -3,7 +3,7 @@ from typing import List
 from common.models.communication_models import Chat, Message
 from fastapi import Depends, APIRouter, HTTPException
 
-from common.schemas.communication_schemas import MessageResponse, ChatResponse
+from common.schemas.communication_schemas import MessageResponse, ChatResponse, SendMessageRequest
 from config import SessionLocal, SECRET_KEY
 from common.utils.auth_utils import get_token, get_user_id_from_token
 
@@ -25,11 +25,11 @@ def create_chat(user_id: int, access_token: str = Depends(get_token)):
 
 
 @router.post("/send_message", summary="Отправить сообщение")
-def send_message(chat_id: int, content: str, access_token: str = Depends(get_token)):
+def send_message(request: SendMessageRequest, access_token: str = Depends(get_token)):
     with SessionLocal() as db:
         try:
             current_user = get_user_id_from_token(access_token, SECRET_KEY)
-            new_message = Message(chat_id=chat_id, sender_id=current_user, content=content)
+            new_message = Message(chat_id=request.chat_id, sender_id=current_user, content=request.content)
             db.add(new_message)
             db.commit()
             return {"message_id": new_message.id}

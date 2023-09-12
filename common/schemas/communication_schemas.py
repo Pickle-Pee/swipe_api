@@ -1,7 +1,4 @@
 from pydantic import BaseModel
-from sqlalchemy.orm import Mapped
-
-from config import Base
 
 
 class MessageResponse(BaseModel):
@@ -21,3 +18,10 @@ class ChatResponse(BaseModel):
 
     class Config:
         orm_mode = True
+
+
+class SendMessageRequest(BaseModel):
+    chat_id: int
+    content: str
+
+
