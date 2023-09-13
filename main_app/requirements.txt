@@ -16,3 +16,4 @@ psycopg2
 psycopg2-binary
 python-socketio
 eventlet
+websocket-client

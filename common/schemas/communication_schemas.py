@@ -25,3 +25,14 @@ class SendMessageRequest(BaseModel):
     content: str
 
 
+class CreateChatRequest(BaseModel):
+    user_id: int
+
+
+class CreateChatResponse(BaseModel):
+    chat_id: int
+
+
+class SendMessageResponse(BaseModel):
+    message_id: int
+

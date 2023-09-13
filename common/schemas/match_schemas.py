@@ -8,6 +8,6 @@ class MatchResponse(BaseModel):
     first_name: str
     date_of_birth: date
     gender: str
-    status: str
+    status: Optional[str] = None
     city_name: Optional[str] = None
     avatar_url: Optional[str] = None
