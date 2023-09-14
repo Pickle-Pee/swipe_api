@@ -36,14 +36,6 @@ def create_chat(request: CreateChatRequest, access_token: str = Depends(get_toke
             raise HTTPException(status_code=400, detail=str(e))
 
 
-@router.get("/get_messages", response_model=List[MessageResponse], summary="Получить все сообщения в чате")
-def get_messages(chat_id: int, access_token: str = Depends(get_token)):
-    with SessionLocal() as db:
-        current_user = get_user_id_from_token(access_token, SECRET_KEY)
-        messages = db.query(Message).filter(Message.chat_id == chat_id).all()
-        return messages
-
-
 @router.get("/get_chats", response_model=List[ChatResponse], summary="Получить все чаты")
 def get_chats(access_token: str = Depends(get_token)):
     with SessionLocal() as db:

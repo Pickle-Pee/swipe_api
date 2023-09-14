@@ -1,6 +1,5 @@
 import os
 
-import socketio
 from fastapi import FastAPI
 from controllers.auth_controller import router as auth_router
 from controllers.user_controller import router as user_router

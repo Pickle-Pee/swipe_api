@@ -25,4 +25,6 @@ class Message(Base):
     content = Column(String)
     created_at = Column(DateTime, default=datetime.utcnow)
 
-    # chat = relationship("Chat", back_populates="messages")
+    def as_dict(self):
+        return {c.name: getattr(self, c.name) for c in self.__table__.columns}
+
