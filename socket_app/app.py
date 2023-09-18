@@ -71,6 +71,10 @@ async def get_messages(sid, data):
 
 @sio.event
 async def send_message(sid, data):
+
+    if isinstance(data, str):
+        data = json.loads(data)
+
     sender_id = data.get('sender_id')
     chat_id = data.get('chat_id')
     message_content = data.get('message')
@@ -90,8 +94,7 @@ async def send_message(sid, data):
     await sio.emit('completer', {
         'sender_id': sender_id,
         'status': 0,
-        'id': message_id,
-        'external_message_id': external_message_id}, room=sid)
+        'id': message_id}, room=sid)
 
 
 @sio.event

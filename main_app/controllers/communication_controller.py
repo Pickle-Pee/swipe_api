@@ -1,10 +1,11 @@
 from typing import List
 
-from common.models.communication_models import Chat, Message
+from common.models.communication_models import Chat
 from fastapi import Depends, APIRouter, HTTPException
 
-from common.schemas.communication_schemas import MessageResponse, ChatResponse, SendMessageRequest, CreateChatRequest, \
-    CreateChatResponse, SendMessageResponse
+from common.models.user_models import User
+from common.schemas.communication_schemas import CreateChatRequest, \
+    CreateChatResponse, UserInChat, ChatPersonResponse
 from config import SessionLocal, SECRET_KEY
 from common.utils.auth_utils import get_token, get_user_id_from_token
 
@@ -36,11 +37,31 @@ def create_chat(request: CreateChatRequest, access_token: str = Depends(get_toke
             raise HTTPException(status_code=400, detail=str(e))
 
 
-@router.get("/get_chats", response_model=List[ChatResponse], summary="Получить все чаты")
+@router.get("/get_chats", response_model=List[ChatPersonResponse], summary="Получить все чаты")
 def get_chats(access_token: str = Depends(get_token)):
     with SessionLocal() as db:
         current_user = get_user_id_from_token(access_token, SECRET_KEY)
         chats = db.query(Chat).filter((Chat.user1_id == current_user) | (Chat.user2_id == current_user)).all()
-        return chats
+
+        chat_responses = []
+        for chat in chats:
+            user2 = db.query(User).filter(User.id == chat.user2_id).first()
+
+            user2_data = UserInChat(
+                id=user2.id,
+                first_name=user2.first_name,
+                status=user2.status,
+                avatar_url=user2.avatar_url
+            )
+
+            chat_response = ChatPersonResponse(
+                id=chat.id,
+                user2=user2_data,
+                created_at=chat.created_at
+            )
+
+            chat_responses.append(chat_response)
+
+        return chat_responses
 
 

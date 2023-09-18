@@ -1,3 +1,4 @@
+import datetime
 from pydantic import BaseModel
 
 
@@ -35,4 +36,18 @@ class CreateChatResponse(BaseModel):
 
 class SendMessageResponse(BaseModel):
     message_id: int
+
+
+class UserInChat(BaseModel):
+    id: int
+    first_name: str
+    status: str
+    avatar_url: str
+
+
+class ChatPersonResponse(BaseModel):
+    id: int
+    user2: UserInChat
+    created_at: datetime.datetime
+
 
