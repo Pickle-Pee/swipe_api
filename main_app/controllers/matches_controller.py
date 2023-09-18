@@ -42,7 +42,7 @@ def find_matches(access_token: str = Depends(get_token)):
             users.avatar_url,
             users.status,
             cities.city_name,
-            SUM(
+            COALESCE(SUM(
                 CASE 
                     WHEN interests.interest_text IN ({interests_str}) THEN 3
                     ELSE 0
@@ -63,7 +63,7 @@ def find_matches(access_token: str = Depends(get_token)):
                     WHEN cities.city_name IN ({cities_str}) THEN 1
                     ELSE 0
                 END
-            ) AS score
+            ), 0) AS score
         FROM 
             users
         LEFT JOIN 
@@ -84,7 +84,7 @@ def find_matches(access_token: str = Depends(get_token)):
             users.id, users.first_name, users.last_name, cities.city_name
         ORDER BY 
             score DESC NULLS LAST
-        LIMIT 10;
+        LIMIT 100;
         """)
 
         result = db.execute(sql_query, {'user_id': user_id}).fetchall()

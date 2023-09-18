@@ -94,7 +94,8 @@ async def send_message(sid, data):
     await sio.emit('completer', {
         'sender_id': sender_id,
         'status': 0,
-        'id': message_id}, room=sid)
+        'id': message_id,
+        'external_message_id': external_message_id}, room=sid)
 
 
 @sio.event

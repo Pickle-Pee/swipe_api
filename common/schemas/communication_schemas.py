@@ -39,15 +39,15 @@ class SendMessageResponse(BaseModel):
 
 
 class UserInChat(BaseModel):
-    id: int
+    userId: int
     first_name: str
     status: str
     avatar_url: str
 
 
 class ChatPersonResponse(BaseModel):
-    id: int
-    user2: UserInChat
+    chatId: int
+    user: UserInChat
     created_at: datetime.datetime
 
 

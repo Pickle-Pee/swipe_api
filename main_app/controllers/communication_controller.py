@@ -48,15 +48,15 @@ def get_chats(access_token: str = Depends(get_token)):
             user2 = db.query(User).filter(User.id == chat.user2_id).first()
 
             user2_data = UserInChat(
-                id=user2.id,
+                userId=user2.id,
                 first_name=user2.first_name,
                 status=user2.status,
                 avatar_url=user2.avatar_url
             )
 
             chat_response = ChatPersonResponse(
-                id=chat.id,
-                user2=user2_data,
+                chatId=chat.id,
+                user=user2_data,
                 created_at=chat.created_at
             )
 
