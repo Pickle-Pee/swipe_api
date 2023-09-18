@@ -24,6 +24,9 @@ class Message(Base):
     sender_id = Column(Integer, ForeignKey('chats.id'))
     content = Column(String)
     created_at = Column(DateTime, default=datetime.utcnow)
+    status = Column(String)
+    delivered_at = Column(DateTime)
+    read_at = Column(DateTime)
 
     def as_dict(self):
         return {c.name: getattr(self, c.name) for c in self.__table__.columns}
