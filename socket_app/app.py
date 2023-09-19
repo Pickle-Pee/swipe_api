@@ -71,7 +71,6 @@ async def get_messages(sid, data):
 
 @sio.event
 async def send_message(sid, data):
-
     if isinstance(data, str):
         data = json.loads(data)
 
@@ -86,16 +85,40 @@ async def send_message(sid, data):
         return
 
     with SessionLocal() as db:
-        new_message = Message(chat_id=chat_id, sender_id=sender_id, content=message_content)
+        new_message = Message(chat_id=chat_id, sender_id=sender_id, content=message_content, status='sent')
         db.add(new_message)
         db.commit()
         message_id = new_message.id
 
-    await sio.emit('completer', {
-        'sender_id': sender_id,
-        'status': 0,
-        'id': message_id,
-        'external_message_id': external_message_id}, room=sid)
+        chat = db.query(Chat).filter(Chat.id == chat_id).first()
+        if chat is None:
+            await sio.emit('error', {'error': f'Chat with ID {chat_id} not found'}, room=sid)
+            return
+
+        recipient_id = chat.user1_id if chat.user2_id == sender_id else chat.user2_id
+
+        recipient_info = connected_users.get(recipient_id)
+        if recipient_info:
+            recipient_sid = recipient_info.get('sid')
+            await sio.emit(
+                'new_message', {
+                    'message_id': message_id,
+                    'message_content': message_content,
+                    'chat_id': chat_id,
+                    'sender_id': sender_id
+                }, room=recipient_sid)
+
+            new_message.status = 'delivered'
+            new_message.delivered_at = datetime.now()
+            db.commit()
+
+    await sio.emit(
+        'completer', {
+            'sender_id': sender_id,
+            'status': 0,
+            'id': message_id,
+            'external_message_id': external_message_id
+        }, room=sid)
 
 
 @sio.event
@@ -124,6 +147,14 @@ async def message_read(sid, data):
 
 @sio.event
 async def all_messages_read(sid, data):
+
+    if isinstance(data, str):
+        try:
+            data = json.loads(data)
+        except json.JSONDecodeError:
+            await sio.emit('error', {'error': 'Invalid data format'}, room=sid)
+            return
+
     chat_id = data.get('chat_id')
     sender_id = data.get('sender_id')
     receiver_id = data.get('receiver_id')

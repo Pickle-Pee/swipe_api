@@ -1,5 +1,7 @@
 import datetime
-from pydantic import BaseModel
+from typing import Optional
+
+from pydantic import BaseModel, Field
 
 
 class MessageResponse(BaseModel):
@@ -41,13 +43,21 @@ class SendMessageResponse(BaseModel):
 class UserInChat(BaseModel):
     userId: int
     first_name: str
-    status: str
-    avatar_url: str
+    avatar_url: Optional[str]
+    status: Optional[str]
 
 
 class ChatPersonResponse(BaseModel):
     chatId: int
     user: UserInChat
     created_at: datetime.datetime
+    last_message: Optional[str] = None
+    unread_count: Optional[int] = 0
+    last_message_status: Optional[int] = None
 
 
+class ChatDetailsResponse(BaseModel):
+    first_name: str
+    age: int
+    avatar_url: Optional[str]
+    status: Optional[str]
