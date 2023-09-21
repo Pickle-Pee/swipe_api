@@ -41,23 +41,26 @@ class SendMessageResponse(BaseModel):
 
 
 class UserInChat(BaseModel):
-    userId: int
+    user_id: int
     first_name: str
+    user_age: int
     avatar_url: Optional[str]
     status: Optional[str]
 
 
 class ChatPersonResponse(BaseModel):
-    chatId: int
+    chat_id: int
     user: UserInChat
     created_at: datetime.datetime
     last_message: Optional[str] = None
     unread_count: Optional[int] = 0
     last_message_status: Optional[int] = None
+    last_message_sender_id: Optional[int]
 
 
 class ChatDetailsResponse(BaseModel):
+    user_id: int
     first_name: str
-    age: int
+    user_age: int
     avatar_url: Optional[str]
     status: Optional[str]

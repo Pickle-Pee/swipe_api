@@ -4,7 +4,7 @@ import socketio
 from datetime import datetime
 from common.models.communication_models import Chat, Message
 from common.utils.auth_utils import get_user_id_from_token
-from config import SessionLocal, SECRET_KEY
+from config import SessionLocal, SECRET_KEY, logger
 from urllib.parse import parse_qs
 
 sio = socketio.AsyncServer(async_mode='asgi', cors_allowed_origins="*", logger=True, engineio_logger=True)
@@ -31,6 +31,14 @@ async def connect(sid, environ):
     connected_users[user_id] = {'sid': sid, 'user_id': user_id}
 
 
+status_mapping = {
+    'sent': 0,
+    'delivered': 1,
+    'read': 2,
+    'error': -1
+}
+
+
 @sio.event
 async def get_messages(sid, data):
     if isinstance(data, str):
@@ -41,7 +49,6 @@ async def get_messages(sid, data):
             return
 
     chat_id = data.get('chat_id')
-
     user_info = next((info for info in connected_users.values() if info['sid'] == sid), None)
 
     if not user_info:
@@ -57,16 +64,19 @@ async def get_messages(sid, data):
 
     with SessionLocal() as db:
         messages = db.query(Message).filter(Message.chat_id == chat_id).all()
-        serialized_messages = []
+        filtered_messages = []
 
         for message in messages:
-            message_dict = message.as_dict()
+            message_dict = {
+                'content': message.content,
+                'sender_id': message.sender_id,
+                'status': status_mapping.get(message.status, -1)
+            }
+            filtered_messages.append(message_dict)
 
-            if 'created_at' in message_dict and isinstance(message_dict['created_at'], datetime):
-                message_dict['created_at'] = message_dict['created_at'].isoformat()
-            serialized_messages.append(message_dict)
+        logger.info(f"Data to be emitted: {json.dumps({'messages': filtered_messages}, default=str)}")
 
-        await sio.emit('update_messages', {'messages': serialized_messages}, room=sid)
+        await sio.emit('get_messages', {'chatId': chat_id, 'messages': filtered_messages}, room=sid)
 
 
 @sio.event
@@ -115,9 +125,10 @@ async def send_message(sid, data):
     await sio.emit(
         'completer', {
             'sender_id': sender_id,
-            'status': 0,
+            'status': 1,
             'id': message_id,
-            'external_message_id': external_message_id
+            'external_message_id': external_message_id,
+            'chat_id': chat_id
         }, room=sid)
 
 
@@ -147,7 +158,7 @@ async def message_read(sid, data):
 
 @sio.event
 async def all_messages_read(sid, data):
-
+    logger.debug(connected_users)
     if isinstance(data, str):
         try:
             data = json.loads(data)
@@ -156,22 +167,58 @@ async def all_messages_read(sid, data):
             return
 
     chat_id = data.get('chat_id')
-    sender_id = data.get('sender_id')
-    receiver_id = data.get('receiver_id')
+
+    if not chat_id:
+        await sio.emit('error', {'error': 'Missing required fields'}, room=sid)
+        return
+
+    sender_id = None
+    for user_info in connected_users.values():
+        if user_info['sid'] == sid:
+            sender_id = user_info['user_id']
+            break
+
+    if sender_id is None:
+        await sio.emit('error', {'error': 'Sender not found'}, room=sid)
+        return
+
     with SessionLocal() as db:
-        messages = db.query(Message).filter(Message.chat_id == chat_id).all()
+        chat = db.query(Chat).filter(Chat.id == chat_id).first()
+        if not chat:
+            await sio.emit('error', {'error': 'Chat not found'}, room=sid)
+            return
+
+        receiver_id = chat.user1_id if chat.user1_id != sender_id else chat.user2_id
+
+    if not chat_id:
+        await sio.emit('error', {'error': 'Missing required field: chat_id'}, room=sid)
+        return
+
+    with SessionLocal() as db:
+        messages = db.query(Message).filter(
+            Message.chat_id == chat_id
+        ).all()
+
         for message in messages:
             message.status = 'read'
             message.read_at = datetime.now()
+
         db.commit()
+
     receiver_info = connected_users.get(receiver_id)
     if receiver_info:
         receiver_sid = receiver_info.get('sid')
-        await sio.emit('chat_status', {
-            'chat_id': chat_id,
-            'sender_id': sender_id,
-            'receiver_id': receiver_id,
-            'status': 'all_read'}, room=receiver_sid)
+        if receiver_sid:
+            await sio.emit(
+                'all_messages_read', {
+                    'chat_id': chat_id
+                }, room=receiver_sid
+            )
+        else:
+            await sio.emit('error', {'error': 'Receiver SID not found'}, room=sid)
+    else:
+        await sio.emit('error', {'error': 'Receiver not connected'}, room=sid)
+
 
 
 @sio.event

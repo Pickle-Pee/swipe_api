@@ -1,3 +1,5 @@
+from random import shuffle, choice
+
 from fastapi import HTTPException, APIRouter, Depends
 from typing import List
 
@@ -84,7 +86,7 @@ def find_matches(access_token: str = Depends(get_token)):
             users.id, users.first_name, users.last_name, cities.city_name
         ORDER BY 
             score DESC NULLS LAST
-        LIMIT 100;
+        LIMIT 10;
         """)
 
         result = db.execute(sql_query, {'user_id': user_id}).fetchall()
