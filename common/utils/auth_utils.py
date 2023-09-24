@@ -51,9 +51,9 @@ def validate_phone_number(phone_number: str):
     return True
 
 
-def get_user_id_from_token(access_token: str, secret_key: str):
+def get_user_id_from_token(access_token: str):
     try:
-        payload = jwt.decode(access_token, secret_key, algorithms=["HS256"])
+        payload = jwt.decode(access_token, SECRET_KEY, algorithms=["HS256"])
         print("Decoded payload:", payload)
         user_id = payload.get("user_id")
         if user_id is None:

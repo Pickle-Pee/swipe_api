@@ -14,7 +14,7 @@ router = APIRouter(prefix="/interest", tags=["Interests Controller"])
             response_model=UserInterestResponse)
 def read_user_interests(access_token: str = Depends(get_token)):
     with SessionLocal() as db:
-        user_id = get_user_id_from_token(access_token, SECRET_KEY)
+        user_id = get_user_id_from_token(access_token)
         user = db.query(User).filter(User.id == user_id).first()
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
@@ -36,7 +36,7 @@ def read_user_interests(access_token: str = Depends(get_token)):
 def add_interests(request: AddInterestsRequest, access_token: str = Depends(get_token)):
     with SessionLocal() as db:
         try:
-            user_id = get_user_id_from_token(access_token, SECRET_KEY)
+            user_id = get_user_id_from_token(access_token)
             user = db.query(User).filter(User.id == user_id).first()
             if not user:
                 raise HTTPException(status_code=404, detail="Пользователь не найден")

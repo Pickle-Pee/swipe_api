@@ -23,7 +23,7 @@ async def connect(sid, environ):
         return False
 
     try:
-        user_id = get_user_id_from_token(access_token, SECRET_KEY)
+        user_id = get_user_id_from_token(access_token)
     except Exception as e:
         print(f"Failed to authenticate user. Exception: {type(e).__name__}, Message: {str(e)}")
         return False

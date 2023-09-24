@@ -20,7 +20,7 @@ router = APIRouter(prefix="/user", tags=["User Controller"])
 def get_current_user(access_token: str = Depends(get_token)):
     with SessionLocal() as db:
         try:
-            user_id = get_user_id_from_token(access_token, SECRET_KEY)
+            user_id = get_user_id_from_token(access_token)
             user = db.query(User).filter(User.id == user_id).first()
             city = db.query(City).filter(City.id == user.city_id).first()
             city_name = city.city_name if city else None
@@ -53,7 +53,7 @@ def get_user(user_id: Optional[int] = None, access_token: str = Depends(get_toke
     with SessionLocal() as db:
         try:
             if user_id is None:
-                user_id = get_user_id_from_token(access_token, SECRET_KEY)
+                user_id = get_user_id_from_token(access_token)
             user = db.query(User).filter(User.id == user_id).first()
             if user:
                 interests_list = [i.interest_text for i in db.query(Interest).all()]
@@ -173,7 +173,7 @@ def add_random_avatars_to_users():
 def add_token(request: AddTokenRequest, access_token: str = Depends(get_token)):
     with SessionLocal() as db:
         try:
-            user_id = get_user_id_from_token(access_token, SECRET_KEY)
+            user_id = get_user_id_from_token(access_token)
             user = db.query(User).filter(User.id == user_id).first()
             if not user:
                 raise HTTPException(status_code=404, detail="Пользователь не найден")

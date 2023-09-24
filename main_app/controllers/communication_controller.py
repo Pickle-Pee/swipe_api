@@ -17,7 +17,7 @@ router = APIRouter(prefix="/communication", tags=["Communication Controller"])
 def create_chat(request: CreateChatRequest, access_token: str = Depends(get_token)):
     with SessionLocal() as db:
         try:
-            current_user_id = get_user_id_from_token(access_token, SECRET_KEY)
+            current_user_id = get_user_id_from_token(access_token)
 
             # Проверяем, существует ли уже чат между этими пользователями
             existing_chat = db.query(Chat).filter(
@@ -45,7 +45,7 @@ def get_chats(access_token: str = Depends(get_token)):
         'read': 2,
     }
     with SessionLocal() as db:
-        current_user = get_user_id_from_token(access_token, SECRET_KEY)
+        current_user = get_user_id_from_token(access_token)
         chats = db.query(Chat).filter((Chat.user1_id == current_user) | (Chat.user2_id == current_user)).all()
 
         chat_responses = []
@@ -98,7 +98,7 @@ def get_chats(access_token: str = Depends(get_token)):
 @router.get("/{chat_id}", response_model=ChatDetailsResponse, summary="Получить детали чата")
 def get_chat_details(chat_id: int, access_token: str = Depends(get_token)):
     with SessionLocal() as db:
-        current_user_id = get_user_id_from_token(access_token, SECRET_KEY)
+        current_user_id = get_user_id_from_token(access_token)
 
         # Проверяем, существует ли чат с данным ID
         chat = db.query(Chat).filter(Chat.id == chat_id).first()

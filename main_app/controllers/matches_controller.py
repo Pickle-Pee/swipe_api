@@ -22,7 +22,7 @@ from datetime import datetime, timedelta
 @router.get("/find_matches", response_model=List[MatchResponse])
 def find_matches(access_token: str = Depends(get_token)):
     with SessionLocal() as db:
-        user_id = get_user_id_from_token(access_token, SECRET_KEY)
+        user_id = get_user_id_from_token(access_token)
         user = db.query(User).filter(User.id == user_id).first()
         if not user:
             raise HTTPException(status_code=404, detail="User not found")

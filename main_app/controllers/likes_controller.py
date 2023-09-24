@@ -15,7 +15,7 @@ router = APIRouter(prefix="/likes", tags=["Likes Controller"])
 @router.post("/like/{user_id}", summary="Лайкнуть пользователя")
 def like_user(user_id: int, access_token: str = Depends(get_token)):
     with SessionLocal() as db:
-        current_user_id = get_user_id_from_token(access_token, SECRET_KEY)
+        current_user_id = get_user_id_from_token(access_token)
 
         # Проверка на взаимный лайк
         with db.begin():
@@ -39,7 +39,7 @@ def like_user(user_id: int, access_token: str = Depends(get_token)):
 @router.post("/dislike/{user_id}", summary="Дизлайкнуть пользователя")
 def dislike_user(user_id: int, access_token: str = Depends(get_token)):
     with SessionLocal() as db:
-        current_user_id = get_user_id_from_token(access_token, SECRET_KEY)
+        current_user_id = get_user_id_from_token(access_token)
 
         new_dislike = Dislike(
             user_id=current_user_id,
@@ -54,7 +54,7 @@ def dislike_user(user_id: int, access_token: str = Depends(get_token)):
 @router.post("/add_to_favorites/{user_id}", response_model=FavoriteCreate, summary="Добавить в избранное")
 def add_to_favorites(user_id: int, access_token: str = Depends(get_token)):
     with SessionLocal() as db:
-        current_user_id = get_user_id_from_token(access_token, SECRET_KEY)
+        current_user_id = get_user_id_from_token(access_token)
 
         # Проверка, чтобы пользователь не добавил сам себя в избранное
         if current_user_id == user_id:
@@ -83,7 +83,7 @@ def add_to_favorites(user_id: int, access_token: str = Depends(get_token)):
 @router.get("/favorites", response_model=List[UserLikesResponse], summary="Список избранных")
 def get_favorites(access_token: str = Depends(get_token)):
     with SessionLocal() as db:
-        current_user_id = get_user_id_from_token(access_token, SECRET_KEY)
+        current_user_id = get_user_id_from_token(access_token)
         favorites = db.query(User).options(joinedload(User.interests)).join(
             Favorite, User.id == Favorite.favorite_user_id).filter(
             Favorite.user_id == current_user_id).all()
@@ -93,7 +93,7 @@ def get_favorites(access_token: str = Depends(get_token)):
 @router.get("/liked_me", response_model=List[UserLikesResponse], summary="Список пользователей, лайкнувших меня")
 def get_liked_by(access_token: str = Depends(get_token)):
     with SessionLocal() as db:
-        current_user_id = get_user_id_from_token(access_token, SECRET_KEY)
+        current_user_id = get_user_id_from_token(access_token)
         liked_by_users = db.query(User).join(Like, User.id == Like.user_id).filter(Like.liked_user_id
                                                                                    == current_user_id).all()
         return liked_by_users
@@ -102,7 +102,7 @@ def get_liked_by(access_token: str = Depends(get_token)):
 @router.get("/liked_users", response_model=List[UserLikesResponse], summary="Список пользователей, которых лайнкул я")
 def get_liked_users(access_token: str = Depends(get_token)):
     with SessionLocal() as db:
-        current_user_id = get_user_id_from_token(access_token, SECRET_KEY)
+        current_user_id = get_user_id_from_token(access_token)
 
         # Запрос на получение пользователей, которых текущий пользователь лайкнул
         liked_users = db.query(User).join(Like, User.id == Like.liked_user_id).filter(
@@ -114,7 +114,7 @@ def get_liked_users(access_token: str = Depends(get_token)):
 @router.delete("/remove_from_favorites/{user_id}", summary="Удалить из избранного")
 def remove_from_favorites(user_id: int, access_token: str = Depends(get_token)):
     with SessionLocal() as db:  # Или ваш способ получения сессии
-        current_user_id = get_user_id_from_token(access_token, SECRET_KEY)
+        current_user_id = get_user_id_from_token(access_token)
 
         # Находим запись в избранном для удаления
         favorite_to_remove = db.query(Favorite).filter(

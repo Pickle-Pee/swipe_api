@@ -229,7 +229,7 @@ def login(phone_number: str, code: str):
 def who_am_i(access_token: str = Depends(get_token)):
     with SessionLocal() as db:
         try:
-            user_id = get_user_id_from_token(access_token, SECRET_KEY)
+            user_id = get_user_id_from_token(access_token)
         except HTTPException:
             raise HTTPException(status_code=401, detail="Invalid token")
 
