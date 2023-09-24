@@ -1,8 +1,10 @@
 from datetime import datetime
 
-from sqlalchemy import Column, String, Integer, ForeignKey, DateTime
+from sqlalchemy import Column, String, Integer, ForeignKey, DateTime, Enum
 from sqlalchemy.orm import relationship, backref
 from config import Base
+
+MessageType = Enum('text', 'voice', 'image', name='message_type_enum')
 
 
 class Chat(Base):
@@ -29,6 +31,8 @@ class Message(Base):
     read_at = Column(DateTime)
     reply_to_message_id = Column(Integer, ForeignKey('messages.id'), nullable=True)
     replies = relationship("Message", backref=backref('reply_to', remote_side=[id]))
+    message_type = Column(MessageType, default='text')
+    media_url = Column(String, nullable=True)
 
     def as_dict(self):
         return {c.name: getattr(self, c.name) for c in self.__table__.columns}

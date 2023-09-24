@@ -8,6 +8,7 @@ from controllers.likes_controller import router as likes_router
 from controllers.subscription_controller import router as subscription_router
 from controllers.matches_controller import router as matches_router
 from controllers.communication_controller import router as communication_router
+from controllers.service_controller import router as service_router
 
 app = FastAPI()
 
@@ -18,6 +19,7 @@ app.include_router(likes_router)
 app.include_router(subscription_router)
 app.include_router(matches_router)
 app.include_router(communication_router)
+app.include_router(service_router)
 
 
 if __name__ == "__main__":

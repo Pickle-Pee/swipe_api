@@ -89,6 +89,10 @@ async def send_message(sid, data):
     sender_info = connected_users.get(sender_id)
     reply_to_message_id = data.get('reply_to_message_id')
 
+    # Получение типа сообщения и URL медиа
+    message_type = data.get('message_type', 'text')  # По умолчанию используется текстовое сообщение
+    media_url = data.get('media_url')  # URL медиафайла, если он есть
+
     if not sender_info:
         await sio.emit('completer', {'sender_id': sender_id, 'status': 1, 'id': None})
         return
@@ -100,7 +104,10 @@ async def send_message(sid, data):
             content=message_content,
             status='delivered',
             delivered_at=datetime.now(),
-            reply_to_message_id=reply_to_message_id)
+            reply_to_message_id=reply_to_message_id,
+            message_type=message_type,
+            media_url=media_url
+        )
         db.add(new_message)
         db.commit()
         message_id = new_message.id
@@ -121,8 +128,11 @@ async def send_message(sid, data):
                     'message_content': message_content,
                     'chat_id': chat_id,
                     'sender_id': sender_id,
-                    'reply_to_message_id': reply_to_message_id
-                }, room=recipient_sid)
+                    'reply_to_message_id': reply_to_message_id,
+                    'message_type': message_type,
+                    'media_url': media_url
+                }, room=recipient_sid
+            )
 
     await sio.emit(
         'completer', {
@@ -131,7 +141,8 @@ async def send_message(sid, data):
             'id': message_id,
             'external_message_id': external_message_id,
             'chat_id': chat_id
-        }, room=sid)
+        }, room=sid
+    )
 
 
 @sio.event
