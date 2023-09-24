@@ -32,10 +32,8 @@ async def connect(sid, environ):
 
 
 status_mapping = {
-    'sent': 0,
     'delivered': 1,
     'read': 2,
-    'error': -1
 }
 
 
@@ -63,7 +61,7 @@ async def get_messages(sid, data):
         connected_users[user_id] = {'sid': sid, 'user_id': user_id}
 
     with SessionLocal() as db:
-        messages = db.query(Message).filter(Message.chat_id == chat_id).all()
+        messages = db.query(Message).filter(Message.chat_id == chat_id).order_by(Message.id.asc()).all()
         filtered_messages = []
 
         for message in messages:
@@ -95,7 +93,12 @@ async def send_message(sid, data):
         return
 
     with SessionLocal() as db:
-        new_message = Message(chat_id=chat_id, sender_id=sender_id, content=message_content, status='sent')
+        new_message = Message(
+            chat_id=chat_id,
+            sender_id=sender_id,
+            content=message_content,
+            status='delivered',
+            delivered_at=datetime.now())
         db.add(new_message)
         db.commit()
         message_id = new_message.id
@@ -117,10 +120,6 @@ async def send_message(sid, data):
                     'chat_id': chat_id,
                     'sender_id': sender_id
                 }, room=recipient_sid)
-
-            new_message.status = 'delivered'
-            new_message.delivered_at = datetime.now()
-            db.commit()
 
     await sio.emit(
         'completer', {
@@ -196,7 +195,8 @@ async def all_messages_read(sid, data):
 
     with SessionLocal() as db:
         messages = db.query(Message).filter(
-            Message.chat_id == chat_id
+            Message.chat_id == chat_id,
+            Message.sender_id != sender_id
         ).all()
 
         for message in messages:

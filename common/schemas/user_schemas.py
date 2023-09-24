@@ -65,3 +65,6 @@ class UserLikesResponse(BaseModel):
     avatar_url: Optional[str] = None
     match_percentage: Optional[int] = None
 
+
+class AddTokenRequest(BaseModel):
+    token: str

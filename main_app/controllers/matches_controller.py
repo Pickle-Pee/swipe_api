@@ -16,6 +16,9 @@ from config import SessionLocal, SECRET_KEY
 router = APIRouter(prefix="/match", tags=["Matches Controller"])
 
 
+from datetime import datetime, timedelta
+
+
 @router.get("/find_matches", response_model=List[MatchResponse])
 def find_matches(access_token: str = Depends(get_token)):
     with SessionLocal() as db:
@@ -30,6 +33,9 @@ def find_matches(access_token: str = Depends(get_token)):
 
         interests_str = ', '.join(["'%s'" % i for i in interests_list])
         cities_str = ', '.join(["'%s'" % c for c in cities_list])
+
+        # Время, после которого лайкнутые пользователи снова появляются в поиске
+        time_threshold = datetime.now() - timedelta(seconds=30)
 
         # SQL-запрос для поиска совпадений
         sql_query = text(f"""
@@ -50,18 +56,6 @@ def find_matches(access_token: str = Depends(get_token)):
                     ELSE 0
                 END +
                 CASE 
-                    WHEN likes.liked_user_id = users.id AND likes.user_id = :user_id THEN 2
-                    ELSE 0
-                END +
-                CASE 
-                    WHEN dislikes.disliked_user_id = users.id AND dislikes.user_id = :user_id THEN -1
-                    ELSE 0
-                END +
-                CASE 
-                    WHEN favorites.favorite_user_id = users.id AND favorites.user_id = :user_id THEN 4
-                    ELSE 0
-                END +
-                CASE 
                     WHEN cities.city_name IN ({cities_str}) THEN 1
                     ELSE 0
                 END
@@ -73,23 +67,21 @@ def find_matches(access_token: str = Depends(get_token)):
         LEFT JOIN 
             interests ON user_interests.interest_id = interests.id
         LEFT JOIN 
-            likes ON users.id = likes.liked_user_id
-        LEFT JOIN 
-            dislikes ON users.id = dislikes.disliked_user_id
-        LEFT JOIN 
-            favorites ON users.id = favorites.favorite_user_id
-        LEFT JOIN 
             cities ON users.city_id = cities.id
         WHERE 
-            users.id != :user_id
+            users.id != :user_id AND
+            NOT EXISTS (
+                SELECT 1 FROM likes 
+                WHERE likes.liked_user_id = users.id AND likes.user_id = :user_id AND likes.timestamp > :time_threshold
+            )
         GROUP BY 
             users.id, users.first_name, users.last_name, cities.city_name
         ORDER BY 
-            score DESC NULLS LAST
+            score DESC, RANDOM()
         LIMIT 10;
         """)
 
-        result = db.execute(sql_query, {'user_id': user_id}).fetchall()
+        result = db.execute(sql_query, {'user_id': user_id, 'time_threshold': time_threshold}).fetchall()
 
         matches = [
             MatchResponse(

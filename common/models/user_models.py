@@ -25,5 +25,15 @@ class User(Base):
     refresh_tokens = relationship("RefreshToken", back_populates="user")
     interests = relationship("UserInterest", back_populates="user")
     city = relationship("City")
+    tokens = relationship("PushTokens", back_populates="user", cascade="all, delete-orphan")
 
 
+class PushTokens(Base):
+    __tablename__ = "push_tokens"
+
+    id = Column(Integer, primary_key=True, index=True)
+    userid = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    token = Column(String, nullable=False)
+    active = Column(Boolean, default=True, nullable=False)
+
+    user = relationship("User", back_populates="tokens")

@@ -5,9 +5,9 @@ from sqlalchemy import text
 
 from common.models.cities_models import City
 from common.models.interests_models import Interest, UserInterest
-from config import SessionLocal, SECRET_KEY
-from common.models.user_models import User
-from common.schemas.user_schemas import UserDataResponse
+from config import SessionLocal, SECRET_KEY, logger
+from common.models.user_models import User, PushTokens
+from common.schemas.user_schemas import UserDataResponse, AddTokenRequest
 from common.utils.auth_utils import get_token, get_user_id_from_token
 import traceback
 import requests
@@ -167,4 +167,36 @@ def add_random_avatars_to_users():
             random_avatar_url = random.choice(avatar_urls)
             user.avatar_url = random_avatar_url
         db.commit()
+
+
+@router.post("/add_token", summary="Добавление или обновление токена пользователя")
+def add_token(request: AddTokenRequest, access_token: str = Depends(get_token)):
+    with SessionLocal() as db:
+        try:
+            user_id = get_user_id_from_token(access_token, SECRET_KEY)
+            user = db.query(User).filter(User.id == user_id).first()
+            if not user:
+                raise HTTPException(status_code=404, detail="Пользователь не найден")
+
+            existing_push_token = db.query(PushTokens).filter(PushTokens.userid == user_id).first()
+
+            if existing_push_token:
+                # Обновление существующего токена
+                existing_push_token.token = request.token
+                existing_push_token.active = True
+                message = "Токен обновлен"
+            else:
+                # Добавление нового токена
+                new_push_token = PushTokens(userid=user_id, token=request.token, active=True)
+                db.add(new_push_token)
+                message = "Токен добавлен"
+
+            db.commit()
+            return {"message": message}
+
+        except Exception as e:
+            print("Exception:", e)
+            logger.error('Error: %s', e)
+            db.rollback()
+            raise HTTPException(status_code=500, detail="Internal server error")
 
