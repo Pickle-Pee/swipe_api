@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from sqlalchemy import Column, String, Integer, ForeignKey, DateTime
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, backref
 from config import Base
 
 
@@ -27,6 +27,8 @@ class Message(Base):
     status = Column(String)
     delivered_at = Column(DateTime)
     read_at = Column(DateTime)
+    reply_to_message_id = Column(Integer, ForeignKey('messages.id'), nullable=True)
+    replies = relationship("Message", backref=backref('reply_to', remote_side=[id]))
 
     def as_dict(self):
         return {c.name: getattr(self, c.name) for c in self.__table__.columns}

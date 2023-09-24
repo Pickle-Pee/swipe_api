@@ -87,6 +87,7 @@ async def send_message(sid, data):
     message_content = data.get('message')
     external_message_id = data.get('external_message_id')
     sender_info = connected_users.get(sender_id)
+    reply_to_message_id = data.get('reply_to_message_id')
 
     if not sender_info:
         await sio.emit('completer', {'sender_id': sender_id, 'status': 1, 'id': None})
@@ -98,7 +99,8 @@ async def send_message(sid, data):
             sender_id=sender_id,
             content=message_content,
             status='delivered',
-            delivered_at=datetime.now())
+            delivered_at=datetime.now(),
+            reply_to_message_id=reply_to_message_id)
         db.add(new_message)
         db.commit()
         message_id = new_message.id
@@ -118,7 +120,8 @@ async def send_message(sid, data):
                     'message_id': message_id,
                     'message_content': message_content,
                     'chat_id': chat_id,
-                    'sender_id': sender_id
+                    'sender_id': sender_id,
+                    'reply_to_message_id': reply_to_message_id
                 }, room=recipient_sid)
 
     await sio.emit(
