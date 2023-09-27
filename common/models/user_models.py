@@ -26,7 +26,7 @@ class User(Base):
     interests = relationship("UserInterest", back_populates="user")
     city = relationship("City")
     tokens = relationship("PushTokens", back_populates="user", cascade="all, delete-orphan")
-
+    messages = relationship("Message", back_populates="sender", lazy="dynamic")
 
 class PushTokens(Base):
     __tablename__ = "push_tokens"

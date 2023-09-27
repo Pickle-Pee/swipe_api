@@ -2,15 +2,27 @@ import json
 import os
 import socketio
 from datetime import datetime
-from common.models.communication_models import Chat, Message
 from common.utils.auth_utils import get_user_id_from_token
-from config import SessionLocal, SECRET_KEY, logger
+from config import SessionLocal, logger, engine
 from urllib.parse import parse_qs
+
+from common.models.auth_models import *
+from common.models.user_models import *
+from common.models.interests_models import *
+from common.models.cities_models import *
+from common.models.likes_models import *
+from common.models.communication_models import *
+from common.models.error_models import *
+
 
 sio = socketio.AsyncServer(async_mode='asgi', cors_allowed_origins="*", logger=True, engineio_logger=True)
 socket_app = socketio.ASGIApp(sio)
 
 connected_users = {}
+
+async def startup_event():
+    # Создание всех таблиц в базе данных при старте приложения
+    Base.metadata.create_all(bind=engine)
 
 
 @sio.event
@@ -68,14 +80,15 @@ async def get_messages(sid, data):
             message_dict = {
                 'content': message.content,
                 'sender_id': message.sender_id,
-                'status': status_mapping.get(message.status, -1)
+                'status': status_mapping.get(message.status, -1),
+                'message_type': message.message_type.name,
+                'media_urls': [media.media_url for media in message.media]  # Обновлено: добавляем все URL медиафайлов
             }
             filtered_messages.append(message_dict)
 
         logger.info(f"Data to be emitted: {json.dumps({'messages': filtered_messages}, default=str)}")
 
         await sio.emit('get_messages', {'chatId': chat_id, 'messages': filtered_messages}, room=sid)
-
 
 @sio.event
 async def send_message(sid, data):
@@ -89,15 +102,18 @@ async def send_message(sid, data):
     sender_info = connected_users.get(sender_id)
     reply_to_message_id = data.get('reply_to_message_id')
 
-    # Получение типа сообщения и URL медиа
-    message_type = data.get('message_type', 'text')  # По умолчанию используется текстовое сообщение
-    media_url = data.get('media_url')  # URL медиафайла, если он есть
+    message_type = data.get('message_type', 'text')
+    media_urls = data.get('media_urls', [])  # Обновлено: теперь это список
 
     if not sender_info:
         await sio.emit('completer', {'sender_id': sender_id, 'status': 1, 'id': None})
         return
 
     with SessionLocal() as db:
+
+        users = db.query(User).all()
+        print(f'test {users}')
+
         new_message = Message(
             chat_id=chat_id,
             sender_id=sender_id,
@@ -105,10 +121,16 @@ async def send_message(sid, data):
             status='delivered',
             delivered_at=datetime.now(),
             reply_to_message_id=reply_to_message_id,
-            message_type=message_type,
-            media_url=media_url
+            message_type=message_type
         )
         db.add(new_message)
+        db.flush()  # Используем flush для получения ID нового сообщения, но еще не коммитим транзакцию
+
+        # Добавляем каждый медиафайл в таблицу media
+        for url in media_urls:
+            media = Media(message_id=new_message.id, media_url=url, media_type=message_type)
+            db.add(media)
+
         db.commit()
         message_id = new_message.id
 
@@ -130,7 +152,7 @@ async def send_message(sid, data):
                     'sender_id': sender_id,
                     'reply_to_message_id': reply_to_message_id,
                     'message_type': message_type,
-                    'media_url': media_url
+                    'media_urls': media_urls  # Обновлено: отправляем список URL
                 }, room=recipient_sid
             )
 
@@ -143,7 +165,6 @@ async def send_message(sid, data):
             'chat_id': chat_id
         }, room=sid
     )
-
 
 @sio.event
 async def message_delivered(sid, data):
