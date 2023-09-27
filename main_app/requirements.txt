@@ -19,3 +19,4 @@ eventlet
 websocket-client
 boto3
 python-multipart
+python-magic

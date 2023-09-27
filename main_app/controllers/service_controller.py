@@ -1,5 +1,6 @@
 import os
 import time
+import magic
 from datetime import datetime
 from typing import Optional
 
@@ -34,7 +35,21 @@ async def upload_message_image(
 
         db.commit()
 
-    extension = file.filename.split(".")[-1]
+    mime = magic.Magic(mime=True)
+    mime_type = mime.from_buffer(file.file.read(1024))
+    file.file.seek(0)  # reset the file cursor to the beginning
+
+    # Determine the file extension based on the MIME type
+    extension = {
+        "image/jpeg": "jpg",
+        "image/png": "png",
+        "image/gif": "gif",
+        "image/bmp": "bmp",
+        "image/tiff": "tiff",
+        "image/webp": "webp",
+        "image/heic": "heic",
+        "image/heif": "heif",
+    }.get(mime_type, "file")
 
     timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
     file_name = f"image_{chat_id}_{timestamp}.{extension}"
