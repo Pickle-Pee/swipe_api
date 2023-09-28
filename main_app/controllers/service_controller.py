@@ -20,7 +20,6 @@ async def upload_message_image(
         file: UploadFile = File(...),
         access_token: str = Depends(get_token),
         tag: Optional[str] = None):
-
     logger.info(f"Received request to upload image for chat_id {chat_id}")
 
     with SessionLocal() as db:
@@ -30,17 +29,16 @@ async def upload_message_image(
         if not user:
             logger.error(f"User with id {user_id} not found")
             raise HTTPException(status_code=404, detail="Пользователь не найден")
-        else:
-            logger.info(f"User with id {user_id} found")
 
+        logger.info(f"User with id {user_id} found")
         db.commit()
 
     mime = magic.Magic(mime=True)
     mime_type = mime.from_buffer(file.file.read(1024))
     file.file.seek(0)  # reset the file cursor to the beginning
 
-    # Determine the file extension based on the MIME type
-    extension = {
+    # Map MIME types to file extensions
+    mime_to_ext = {
         "image/jpeg": "jpg",
         "image/png": "png",
         "image/gif": "gif",
@@ -49,28 +47,36 @@ async def upload_message_image(
         "image/webp": "webp",
         "image/heic": "heic",
         "image/heif": "heif",
-    }.get(mime_type, "file")
+    }
+
+    extension = mime_to_ext.get(mime_type)
+    if extension is None:
+        logger.error(f"Unsupported file type {mime_type}")
+        raise HTTPException(status_code=400, detail="Unsupported file type")
 
     timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
     file_name = f"image_{chat_id}_{timestamp}.{extension}"
 
     logger.info(f"Uploading file {file_name}")
 
-    with open(file_name, "wb") as buffer:
-        buffer.write(file.file.read())
-
     try:
+        # Always write the file to the buffer before uploading to S3
+        with open(file_name, "wb") as buffer:
+            buffer.write(file.file.read())
+
+        # Upload the file to S3
         with open(file_name, "rb") as f:
             s3_client.upload_fileobj(f, BUCKET_MESSAGE_IMAGES, file_name)
+
         logger.info(f"File {file_name} uploaded successfully to S3")
     except Exception as e:
         logger.error(f"Failed to upload file {file_name} to S3: {e}")
         raise HTTPException(status_code=500, detail="Failed to upload file")
-
-    logger.info(f"File {file_name} uploaded successfully to S3")
-
-    os.remove(file_name)
-    logger.info(f"Local file {file_name} removed")
+    finally:
+        # Clean up the local file whether the upload was successful or not
+        if os.path.exists(file_name):
+            os.remove(file_name)
+            logger.info(f"Local file {file_name} removed")
 
     return {"file_key": file_name}
 
@@ -80,7 +86,6 @@ async def upload_message_voice(
         chat_id: int,
         file: UploadFile = File(...),
         access_token: str = Depends(get_token)):
-
     logger.info(f"Received request to upload voice message for chat_id {chat_id}")
 
     with SessionLocal() as db:
@@ -90,30 +95,39 @@ async def upload_message_voice(
         if not user:
             logger.error(f"User with id {user_id} not found")
             raise HTTPException(status_code=404, detail="Пользователь не найден")
-        else:
-            logger.info(f"User with id {user_id} found")
 
+        logger.info(f"User with id {user_id} found")
         db.commit()
 
-    file_name = file.filename
+    # Ensure the filename is safe
+    file_name = "".join([c for c in file.filename if c.isalnum() or c in ('.', '_')])
+    if not file_name:
+        logger.error(f"Invalid file name {file.filename}")
+        raise HTTPException(status_code=400, detail="Invalid file name")
 
     logger.info(f"Uploading file {file_name}")
 
-    with open(file_name, "wb") as buffer:
-        buffer.write(file.file.read())
-
     try:
+        # Always write the file to the buffer before uploading to S3
+        with open(file_name, "wb") as buffer:
+            buffer.write(file.file.read())
+
+        # Upload the file to S3
         with open(file_name, "rb") as f:
             s3_client.upload_fileobj(f, BUCKET_MESSAGE_VOICES, file_name)
+
         logger.info(f"File {file_name} uploaded successfully to S3")
+    except FileNotFoundError as e:
+        logger.error(f"File {file_name} not found: {e}")
+        raise HTTPException(status_code=404, detail="File not found")
     except Exception as e:
         logger.error(f"Failed to upload file {file_name} to S3: {e}")
         raise HTTPException(status_code=500, detail="Failed to upload file")
-
-    logger.info(f"File {file_name} uploaded successfully to S3")
-
-    os.remove(file_name)
-    logger.info(f"Local file {file_name} removed")
+    finally:
+        # Clean up the local file whether the upload was successful or not
+        if os.path.exists(file_name):
+            os.remove(file_name)
+            logger.info(f"Local file {file_name} removed")
 
     return {"file_key": file_name}
 
