@@ -1,5 +1,8 @@
 from sqlalchemy import Column, Integer, DateTime, ForeignKey, Boolean
 from datetime import datetime
+
+from sqlalchemy.orm import relationship
+
 from config import Base
 
 
@@ -24,7 +27,11 @@ class Dislike(Base):
 
 class Favorite(Base):
     __tablename__ = 'favorites'
+    __table_args__ = {'extend_existing': True}
 
-    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    id = Column(Integer, primary_key=True, autoincrement=True)
     user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
     favorite_user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
+
+    user = relationship("User", foreign_keys=[user_id])
+    favorite_user = relationship("User", foreign_keys=[favorite_user_id])

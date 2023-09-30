@@ -1,6 +1,5 @@
 import re
-from common.models.interests_models import UserInterest
-from common.models.favorite_models import Favorite
+from common.models.likes_models import Favorite
 from config import SessionLocal
 
 

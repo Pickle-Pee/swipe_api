@@ -1,3 +1,4 @@
+import requests
 from fastapi import HTTPException, Header
 from datetime import datetime, timedelta
 from config import SECRET_KEY, ACCESS_TOKEN_EXPIRE_MINUTES, REFRESH_TOKEN_EXPIRE_HOURS
@@ -66,3 +67,26 @@ def get_user_id_from_token(access_token: str):
     except jwt.InvalidTokenError:
         raise HTTPException(status_code=401, detail="Invalid token")
 
+
+def send_sms(phone_number: str, text: str, api_key: str):
+    url = "https://gate.smsaero.ru/v2/sms/send"
+
+    params = {
+        "number": phone_number,
+        "text": text,
+        "sign": "NEWS",  # Подпись сообщения, может быть установлена в аккаунте SMS Aero
+        "channel": "DIRECT"  # Канал отправки
+    }
+
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {api_key}"
+    }
+
+    response = requests.post(url, params=params, headers=headers)
+
+    if response.status_code == 200:
+        return response.json()
+    else:
+        print("Failed to send SMS:", response.status_code, response.text)
+        return None

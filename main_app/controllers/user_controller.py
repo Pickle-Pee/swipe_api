@@ -5,7 +5,8 @@ from sqlalchemy import text
 
 from common.models.cities_models import City
 from common.models.interests_models import Interest, UserInterest
-from config import SessionLocal, SECRET_KEY, logger
+from common.utils.crud import delete_user_and_related_data
+from config import SessionLocal, logger
 from common.models.user_models import User, PushTokens
 from common.schemas.user_schemas import UserDataResponse, AddTokenRequest
 from common.utils.auth_utils import get_token, get_user_id_from_token
@@ -199,4 +200,24 @@ def add_token(request: AddTokenRequest, access_token: str = Depends(get_token)):
             logger.error('Error: %s', e)
             db.rollback()
             raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@router.delete("/delete_user", summary="Удаление профиля")
+def delete_user(access_token: str = Depends(get_token)):
+    with SessionLocal() as db:
+        user_id = get_user_id_from_token(access_token)
+        if not user_id:
+            raise HTTPException(
+                status_code=404,
+                detail="Пользователь не найден"
+            )
+
+        success = delete_user_and_related_data(db, user_id)
+        if not success:
+            raise HTTPException(
+                status_code=404,
+                detail="Пользователь не найден или не может быть удален"
+            )
+
+        return {"status": "success", "message": "Профиль удален"}
 

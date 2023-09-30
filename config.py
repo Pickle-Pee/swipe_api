@@ -24,10 +24,9 @@ YANDEX_KEY = os.getenv("YANDEX_KEY")
 BUCKET_MESSAGE_IMAGES = os.getenv("BUCKET_MESSAGE_IMAGES")
 BUCKET_MESSAGE_VOICES = os.getenv("BUCKET_MESSAGE_VOICES")
 BUCKET_PROFILE_IMAGES = os.getenv("BUCKET_PROFILE_IMAGES")
-# REGION_KEY = os.getenv("REGION_KEY")
+SMS_API_KEY = os.getenv("SMS_API_KEY")
 
 logging.basicConfig(level=logging.DEBUG)
-logging.basicConfig(level=logging.INFO)
 # logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
 logger = logging.getLogger(__name__)
 
