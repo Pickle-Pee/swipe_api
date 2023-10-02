@@ -7,8 +7,7 @@ from fastapi import Depends, APIRouter, HTTPException
 from common.models.user_models import User
 from common.schemas.communication_schemas import CreateChatRequest, \
     CreateChatResponse, UserInChat, ChatPersonResponse, ChatDetailsResponse
-from common.utils.crud import delete_chat_and_related_messages, delete_message_and_related_media
-from config import SessionLocal, SECRET_KEY
+from config import SessionLocal
 from common.utils.auth_utils import get_token, get_user_id_from_token
 
 router = APIRouter(prefix="/communication", tags=["Communication Controller"])
@@ -47,7 +46,10 @@ def get_chats(access_token: str = Depends(get_token)):
     }
     with SessionLocal() as db:
         current_user = get_user_id_from_token(access_token)
-        chats = db.query(Chat).filter((Chat.user1_id == current_user) | (Chat.user2_id == current_user)).all()
+        chats = db.query(Chat).filter(
+            ((Chat.user1_id == current_user) & (Chat.deleted_for_user1.is_(False))) |
+            ((Chat.user2_id == current_user) & (Chat.deleted_for_user2.is_(False)))
+        ).all()
 
         chat_responses = []
         for chat in chats:
@@ -129,47 +131,3 @@ def get_chat_details(chat_id: int, access_token: str = Depends(get_token)):
         )
 
         return chat_details
-
-
-@router.delete("/chats/{chat_id}", summary="Удалить чат", status_code=204)
-def delete_chat(chat_id: int, access_token: str = Depends(get_token)):
-    with SessionLocal() as db:
-        try:
-            current_user_id = get_user_id_from_token(access_token)
-
-            chat = db.query(Chat).filter(
-                Chat.id == chat_id,
-                ((Chat.user1_id == current_user_id) | (Chat.user2_id == current_user_id))
-            ).first()
-
-            if not chat:
-                raise HTTPException(status_code=404, detail="Chat not found")
-
-            # Здесь должен быть вызов вашей функции для удаления чата и связанных сообщений
-            delete_chat_and_related_messages(db, chat.id)
-
-        except Exception as e:
-            db.rollback()
-            raise HTTPException(status_code=400, detail=str(e))
-
-
-@router.delete("/messages/{message_id}", summary="Удалить сообщение", status_code=204)
-def delete_message(message_id: int, access_token: str = Depends(get_token)):
-    with SessionLocal() as db:
-        try:
-            current_user_id = get_user_id_from_token(access_token)
-
-            message = db.query(Message).filter(
-                Message.id == message_id,
-                Message.sender_id == current_user_id  # Убедитесь, что пользователь имеет право удалить это сообщение
-            ).first()
-
-            if not message:
-                raise HTTPException(status_code=404, detail="Message not found")
-
-            # Здесь должен быть вызов вашей функции для удаления сообщения и связанных медиафайлов
-            delete_message_and_related_media(db, message.id)
-
-        except Exception as e:
-            db.rollback()
-            raise HTTPException(status_code=400, detail=str(e))

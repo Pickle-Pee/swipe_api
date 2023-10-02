@@ -1,7 +1,7 @@
 import enum
 from datetime import datetime
 
-from sqlalchemy import Column, String, Integer, ForeignKey, DateTime, Enum
+from sqlalchemy import Column, String, Integer, ForeignKey, DateTime, Enum, Boolean
 from sqlalchemy.orm import relationship, backref
 from config import Base
 
@@ -19,6 +19,8 @@ class Chat(Base):
     user1_id = Column(Integer, ForeignKey('users.id'), nullable=True)
     user2_id = Column(Integer, ForeignKey('users.id'), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
+    deleted_for_user1 = Column(Boolean, default=False)
+    deleted_for_user2 = Column(Boolean, default=False)
 
     messages = relationship("Message", foreign_keys="[Message.chat_id]")
 
@@ -37,6 +39,8 @@ class Message(Base):
     reply_to_message_id = Column(Integer, ForeignKey('messages.id'), nullable=True)
     replies = relationship("Message", backref=backref('reply_to', remote_side=[id]))
     message_type = Column(Enum(MessageTypeEnum), default=MessageTypeEnum.text)
+    deleted_for_user1 = Column(Boolean, default=False)
+    deleted_for_user2 = Column(Boolean, default=False)
 
     sender = relationship("User", back_populates="messages")
     media = relationship("Media", back_populates="message")

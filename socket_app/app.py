@@ -73,22 +73,37 @@ async def get_messages(sid, data):
         connected_users[user_id] = {'sid': sid, 'user_id': user_id}
 
     with SessionLocal() as db:
+        chat = db.query(Chat).filter(Chat.id == chat_id).first()
+
+        if not chat:
+            await sio.emit('error', {'error': 'Chat not found'}, room=sid)
+            return
+
+        is_user1 = chat.user1_id == user_id
+
         messages = db.query(Message).filter(Message.chat_id == chat_id).order_by(Message.id.asc()).all()
         filtered_messages = []
 
         for message in messages:
+            # Проверяем, удалено ли сообщение для текущего пользователя
+            if (is_user1 and message.deleted_for_user1) or (not is_user1 and message.deleted_for_user2):
+                continue  # Пропускаем это сообщение, если оно было удалено
+
             message_dict = {
+                'message_id': message.id,
                 'content': message.content,
                 'sender_id': message.sender_id,
                 'status': status_mapping.get(message.status, -1),
                 'message_type': message.message_type.name,
-                'media_urls': [media.media_url for media in message.media]  # Обновлено: добавляем все URL медиафайлов
+                'media_urls': [media.media_url for media in message.media]
             }
+
             filtered_messages.append(message_dict)
 
         logger.info(f"Data to be emitted: {json.dumps({'messages': filtered_messages}, default=str)}")
 
         await sio.emit('get_messages', {'chatId': chat_id, 'messages': filtered_messages}, room=sid)
+
 
 @sio.event
 async def send_message(sid, data):
@@ -254,6 +269,94 @@ async def all_messages_read(sid, data):
     else:
         await sio.emit('error', {'error': 'Receiver not connected'}, room=sid)
 
+
+@sio.event
+async def delete_message(sid, data):
+    if isinstance(data, str):
+        data = json.loads(data)
+
+    message_id = data.get('message_id')
+    user_id = data.get('user_id')
+    delete_for_both = data.get('delete_for_both', False)
+
+    if not message_id or not user_id:
+        await sio.emit('error', {'error': 'Invalid data'}, room=sid)
+        return
+
+    with SessionLocal() as db:
+        message = db.query(Message).filter(Message.id == message_id).first()
+
+        if not message:
+            await sio.emit('error', {'error': 'Message not found'}, room=sid)
+            return
+
+        if message.sender_id == user_id:
+            message.deleted_for_user1 = True
+        else:
+            message.deleted_for_user2 = True
+
+        if delete_for_both:
+            message.deleted_for_user1 = True
+            message.deleted_for_user2 = True
+
+        db.commit()
+
+        await sio.emit('delete_message', {'message_id': message_id, 'delete_for_both': delete_for_both}, room=sid)
+
+        if delete_for_both:
+            chat = db.query(Chat).filter(Chat.id == message.chat_id).first()
+            recipient_id = chat.user1_id if chat.user2_id == user_id else chat.user2_id
+            recipient_info = connected_users.get(recipient_id)
+
+            if recipient_info:
+                await sio.emit(
+                    'delete_message', {'message_id': message_id, 'delete_for_both': delete_for_both},
+                    room=recipient_info['sid'])
+
+
+@sio.event
+async def delete_chat(sid, data):
+    if isinstance(data, str):
+        data = json.loads(data)
+
+    chat_id = data.get('chat_id')
+    user_id = data.get('user_id')
+    delete_for_both = data.get('delete_for_both', False)
+
+    if not chat_id or not user_id:
+        await sio.emit('error', {'error': 'Invalid data'}, room=sid)
+        return
+
+    with SessionLocal() as db:
+        chat = db.query(Chat).filter(Chat.id == chat_id).first()
+
+        if not chat:
+            await sio.emit('error', {'error': 'Chat not found'}, room=sid)
+            return
+
+        if chat.user1_id == user_id:
+            chat.deleted_for_user1 = True
+        elif chat.user2_id == user_id:
+            chat.deleted_for_user2 = True
+        else:
+            await sio.emit('error', {'error': 'User not found in chat'}, room=sid)
+            return
+
+        if delete_for_both:
+            chat.deleted_for_user1 = True
+            chat.deleted_for_user2 = True
+
+        db.commit()
+
+        await sio.emit('delete_chat', {'chat_id': chat_id, 'delete_for_both': delete_for_both}, room=sid)
+
+        if delete_for_both or (chat.deleted_for_user1 and chat.deleted_for_user2):
+            recipient_id = chat.user1_id if chat.user2_id == user_id else chat.user2_id
+            recipient_info = connected_users.get(recipient_id)
+
+            if recipient_info:
+                await sio.emit(
+                    'delete_chat', {'chat_id': chat_id, 'delete_for_both': delete_for_both}, room=recipient_info['sid'])
 
 
 @sio.event
