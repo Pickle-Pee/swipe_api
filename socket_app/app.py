@@ -97,7 +97,7 @@ async def get_messages(sid, data):
 
             message_dict = {
                 'message_id': message.id,
-                'content': message.content,
+                'message': message.content,
                 'sender_id': message.sender_id,
                 'status': status_mapping.get(message.status, -1),
                 'message_type': message.message_type.name,
@@ -124,7 +124,7 @@ async def send_message(sid, data):
     reply_to_message_id = data.get('reply_to_message_id')
 
     message_type = data.get('message_type', 'text')
-    media_urls = data.get('media_urls', [])  # Обновлено: теперь это список
+    media_urls = data.get('media_urls', [])
 
     if not sender_info:
         await sio.emit('completer', {'sender_id': sender_id, 'status': 1, 'id': None})
@@ -168,12 +168,12 @@ async def send_message(sid, data):
             await sio.emit(
                 'new_message', {
                     'message_id': message_id,
-                    'message_content': message_content,
+                    'message': message_content,
                     'chat_id': chat_id,
                     'sender_id': sender_id,
                     'reply_to_message_id': reply_to_message_id,
                     'message_type': message_type,
-                    'media_urls': media_urls  # Обновлено: отправляем список URL
+                    'media_urls': media_urls
                 }, room=recipient_sid
             )
 
