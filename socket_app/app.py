@@ -20,6 +20,7 @@ socket_app = socketio.ASGIApp(sio)
 
 connected_users = {}
 
+
 async def startup_event():
     # Создание всех таблиц в базе данных при старте приложения
     Base.metadata.create_all(bind=engine)
@@ -42,6 +43,11 @@ async def connect(sid, environ):
 
     connected_users[user_id] = {'sid': sid, 'user_id': user_id}
 
+    with SessionLocal() as db:
+        user = db.query(User).filter(User.id == user_id).first()
+        if user:
+            user.status = 'online'
+            db.commit()
 
 status_mapping = {
     'delivered': 1,
@@ -366,6 +372,12 @@ async def disconnect(sid):
     if user_id:
         del connected_users[user_id]
         print(f"Removed user {user_id} with sid {sid} from connected_users")
+
+        with SessionLocal() as db:
+            user = db.query(User).filter(User.id == user_id).first()
+            if user:
+                user.status = 'offline'
+                db.commit()
 
 
 if __name__ == "__main__":
