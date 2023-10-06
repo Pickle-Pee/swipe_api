@@ -1,4 +1,5 @@
 from fastapi import HTTPException, APIRouter, Depends
+from fastapi.responses import Response
 from typing import List, Optional
 
 from sqlalchemy import text
@@ -8,7 +9,8 @@ from common.models.interests_models import Interest, UserInterest
 from common.utils.crud import delete_user_and_related_data
 from config import SessionLocal, logger
 from common.models.user_models import User, PushTokens
-from common.schemas.user_schemas import UserDataResponse, AddTokenRequest, PersonalUserDataResponse, InterestResponse
+from common.schemas.user_schemas import UserDataResponse, AddTokenRequest, PersonalUserDataResponse, InterestResponse, \
+    UpdateUserRequest, UpdateUserResponse
 from common.utils.auth_utils import get_token, get_user_id_from_token
 import traceback
 import requests
@@ -223,3 +225,47 @@ def delete_user(access_token: str = Depends(get_token)):
 
         return {"status": "success", "message": "Профиль удален"}
 
+
+@router.put("/update_user", status_code=201, summary="Обновление данных пользователя")
+async def update_user(data: UpdateUserRequest, access_token: str = Depends(get_token)):
+    with SessionLocal() as db:
+        try:
+            user_id = get_user_id_from_token(access_token)
+            user = db.query(User).filter(User.id == user_id).first()
+            if not user:
+                raise HTTPException(status_code=404, detail="Пользователь не найден")
+
+            if data.first_name:
+                user.first_name = data.first_name
+
+            if data.date_of_birth:
+                user.date_of_birth = data.date_of_birth
+
+            if data.gender:
+                user.gender = data.gender
+
+            if data.city_name:
+                city = db.query(City).filter(City.city_name == data.city_name).first()
+                if city:
+                    user.city_id = city.id
+
+            if data.interests:
+                # Удаление текущих интересов пользователя
+                db.query(UserInterest).filter(UserInterest.user_id == user_id).delete()
+
+                # Добавление новых интересов
+                for interest in data.interests:
+                    new_user_interest = UserInterest(user_id=user_id, interest_id=interest.interest_id)
+                    db.add(new_user_interest)
+
+            if data.about_me:
+                user.about_me = data.about_me
+
+            db.commit()
+
+            return Response(status_code=201)
+
+        except Exception as e:
+            print("Exception:", e)
+            db.rollback()
+            raise HTTPException(status_code=500, detail="Internal server error")

@@ -88,3 +88,16 @@ class UserLikesResponse(BaseModel):
 
 class AddTokenRequest(BaseModel):
     token: str
+
+
+class UpdateUserRequest(BaseModel):
+    first_name: Optional[str] = None
+    date_of_birth: Optional[date] = None
+    gender: Optional[str] = None
+    city_name: Optional[str] = None
+    interests: Optional[List[InterestResponse]] = None
+    about_me: Optional[str] = None
+
+
+class UpdateUserResponse(BaseModel):
+    message: str

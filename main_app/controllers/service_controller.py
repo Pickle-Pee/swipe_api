@@ -4,10 +4,11 @@ import magic
 from datetime import datetime
 from typing import Optional
 
-from fastapi import UploadFile, File, APIRouter, Depends, HTTPException
-from fastapi.responses import StreamingResponse
+from fastapi import UploadFile, File, APIRouter, Depends, HTTPException, status
+from fastapi.responses import StreamingResponse, JSONResponse
 
 from common.models.user_models import User
+from common.utils.service_utils import get_cities
 from config import s3_client, BUCKET_MESSAGE_IMAGES, BUCKET_MESSAGE_VOICES, BUCKET_PROFILE_IMAGES, SessionLocal, logger
 from common.utils.auth_utils import get_user_id_from_token, get_token
 
@@ -132,7 +133,7 @@ async def upload_message_voice(
     return {"file_key": file_name}
 
 
-@router.post("/upload")
+@router.post("/upload/profile_photo")
 async def upload_profile_image(
         file: UploadFile = File(...),
         access_token: str = Depends(get_token)):
@@ -190,3 +191,12 @@ async def get_file(file_key: str, access_token: str = Depends(get_token)):
             logger.error(f"File not found in bucket {bucket}: {e}")
 
     raise HTTPException(status_code=404, detail=f"File with key {file_key} not found in any bucket")
+
+
+@router.get("/cities/{query}")
+async def cities(query: str):
+    try:
+        cities = await get_cities(query)
+        return JSONResponse(content=cities, status_code=status.HTTP_200_OK)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
