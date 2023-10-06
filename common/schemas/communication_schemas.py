@@ -1,7 +1,14 @@
 import datetime
+import enum
 from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
+
+
+class MessageTypeEnum(enum.Enum):
+    text = "text"
+    voice = "voice"
+    image = "image"
 
 
 class MessageResponse(BaseModel):
@@ -56,6 +63,7 @@ class ChatPersonResponse(BaseModel):
     unread_count: Optional[int] = 0
     last_message_status: Optional[int] = None
     last_message_sender_id: Optional[int]
+    last_message_type: Optional[MessageTypeEnum]
 
 
 class ChatDetailsResponse(BaseModel):

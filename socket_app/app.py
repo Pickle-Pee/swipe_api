@@ -3,7 +3,7 @@ import os
 import socketio
 from datetime import datetime
 from common.utils.auth_utils import get_user_id_from_token
-from config import SessionLocal, logger, engine
+from config import SessionLocal, logger, engine, socketio_logger
 from urllib.parse import parse_qs
 
 from common.models.auth_models import *
@@ -38,10 +38,12 @@ async def connect(sid, environ):
     try:
         user_id = get_user_id_from_token(access_token)
     except Exception as e:
-        print(f"Failed to authenticate user. Exception: {type(e).__name__}, Message: {str(e)}")
+        socketio_logger.error(f"Failed to authenticate user. Exception: {type(e).__name__}, Message: {str(e)}")
         return False
 
     connected_users[user_id] = {'sid': sid, 'user_id': user_id}
+
+    socketio_logger.info(f"User with ID {user_id} connected, SID: {sid}")
 
     with SessionLocal() as db:
         user = db.query(User).filter(User.id == user_id).first()
@@ -72,6 +74,7 @@ async def get_messages(sid, data):
         return
 
     user_id = user_info.get('user_id')
+    socketio_logger.info(f"User with ID {user_id} requested messages for chat ID {chat_id}")
 
     if user_id in connected_users:
         connected_users[user_id]['sid'] = sid
@@ -91,8 +94,14 @@ async def get_messages(sid, data):
         filtered_messages = []
 
         for message in messages:
+            socketio_logger.info(
+                f"Message ID {message.id}: deleted_for_user1={message.deleted_for_user1}, "
+                f"deleted_for_user2={message.deleted_for_user2}, is_user1={is_user1}, user_id={user_id}"
+            )
+
             # Проверяем, удалено ли сообщение для текущего пользователя
             if (is_user1 and message.deleted_for_user1) or (not is_user1 and message.deleted_for_user2):
+                socketio_logger.info(f"Message ID {message.id} filtered for user ID {user_id}")
                 continue  # Пропускаем это сообщение, если оно было удалено
 
             message_dict = {
@@ -106,7 +115,7 @@ async def get_messages(sid, data):
 
             filtered_messages.append(message_dict)
 
-        logger.info(f"Data to be emitted: {json.dumps({'messages': filtered_messages}, default=str)}")
+        socketio_logger.info(f"Data to be emitted: {json.dumps({'messages': filtered_messages}, default=str)}")
 
         await sio.emit('get_messages', {'chatId': chat_id, 'messages': filtered_messages}, room=sid)
 
@@ -116,25 +125,25 @@ async def send_message(sid, data):
     if isinstance(data, str):
         data = json.loads(data)
 
-    sender_id = data.get('sender_id')
     chat_id = data.get('chat_id')
     message_content = data.get('message')
     external_message_id = data.get('external_message_id')
-    sender_info = connected_users.get(sender_id)
     reply_to_message_id = data.get('reply_to_message_id')
+
+    # Получаем sender_id из информации о подключении
+    sender_info = next((info for info in connected_users.values() if info['sid'] == sid), None)
+
+    if not sender_info:
+        await sio.emit('error', {'error': 'Authentication failed'}, room=sid)
+        return
+
+    sender_id = sender_info.get('user_id')
+    socketio_logger.info(f"User with ID {sender_id} is sending a message to chat ID {chat_id}")  # Логирование отправки сообщения
 
     message_type = data.get('message_type', 'text')
     media_urls = data.get('media_urls', [])
 
-    if not sender_info:
-        await sio.emit('completer', {'sender_id': sender_id, 'status': 1, 'id': None})
-        return
-
     with SessionLocal() as db:
-
-        users = db.query(User).all()
-        print(f'test {users}')
-
         new_message = Message(
             chat_id=chat_id,
             sender_id=sender_id,
@@ -145,7 +154,7 @@ async def send_message(sid, data):
             message_type=message_type
         )
         db.add(new_message)
-        db.flush()  # Используем flush для получения ID нового сообщения, но еще не коммитим транзакцию
+        db.flush()
 
         # Добавляем каждый медиафайл в таблицу media
         for url in media_urls:
@@ -161,8 +170,8 @@ async def send_message(sid, data):
             return
 
         recipient_id = chat.user1_id if chat.user2_id == sender_id else chat.user2_id
-
         recipient_info = connected_users.get(recipient_id)
+
         if recipient_info:
             recipient_sid = recipient_info.get('sid')
             await sio.emit(
@@ -186,6 +195,7 @@ async def send_message(sid, data):
             'chat_id': chat_id
         }, room=sid
     )
+
 
 @sio.event
 async def message_delivered(sid, data):
@@ -213,7 +223,7 @@ async def message_read(sid, data):
 
 @sio.event
 async def all_messages_read(sid, data):
-    logger.debug(connected_users)
+    socketio_logger.debug(connected_users)
     if isinstance(data, str):
         try:
             data = json.loads(data)
@@ -279,26 +289,48 @@ async def all_messages_read(sid, data):
 @sio.event
 async def delete_message(sid, data):
     if isinstance(data, str):
-        data = json.loads(data)
+        try:
+            data = json.loads(data)
+        except json.JSONDecodeError:
+            await sio.emit('error', {'error': 'Invalid data format'}, room=sid)
+            return
 
     message_id = data.get('message_id')
-    user_id = data.get('user_id')
+    chat_id = data.get('chat_id')
     delete_for_both = data.get('delete_for_both', False)
 
-    if not message_id or not user_id:
+    # Получаем user_id таким же образом, как и в get_messages
+    user_info = next((info for info in connected_users.values() if info['sid'] == sid), None)
+
+    if not user_info:
+        await sio.emit('error', {'error': 'Authentication failed'}, room=sid)
+        return
+
+    user_id = user_info.get('user_id')
+    socketio_logger.info(f"User with ID {user_id} is deleting a message in chat ID {chat_id}")
+
+    if not message_id or not chat_id:
         await sio.emit('error', {'error': 'Invalid data'}, room=sid)
         return
 
     with SessionLocal() as db:
-        message = db.query(Message).filter(Message.id == message_id).first()
+        message = db.query(Message).filter(Message.id == message_id, Message.chat_id == chat_id).first()
+        chat = db.query(Chat).filter(Chat.id == chat_id).first()
 
-        if not message:
-            await sio.emit('error', {'error': 'Message not found'}, room=sid)
+        if not message or not chat:
+            await sio.emit('error', {'error': 'Message or chat not found'}, room=sid)
             return
 
-        if message.sender_id == user_id:
+        is_user1 = chat.user1_id == user_id
+        is_user2 = chat.user2_id == user_id
+
+        if not is_user1 and not is_user2:
+            await sio.emit('error', {'error': 'User not found in chat'}, room=sid)
+            return
+
+        if is_user1:
             message.deleted_for_user1 = True
-        else:
+        elif is_user2:
             message.deleted_for_user2 = True
 
         if delete_for_both:
@@ -307,29 +339,44 @@ async def delete_message(sid, data):
 
         db.commit()
 
-        await sio.emit('delete_message', {'message_id': message_id, 'delete_for_both': delete_for_both}, room=sid)
+        # Включаем chat_id в ответ
+        await sio.emit('delete_message', {'message_id': message_id, 'chat_id': chat_id}, room=sid)
 
         if delete_for_both:
-            chat = db.query(Chat).filter(Chat.id == message.chat_id).first()
+            chat = db.query(Chat).filter(Chat.id == chat_id).first()
             recipient_id = chat.user1_id if chat.user2_id == user_id else chat.user2_id
             recipient_info = connected_users.get(recipient_id)
 
             if recipient_info:
                 await sio.emit(
-                    'delete_message', {'message_id': message_id, 'delete_for_both': delete_for_both},
+                    'delete_message', {'message_id': message_id, 'chat_id': chat_id},  # Включаем chat_id в ответ
                     room=recipient_info['sid'])
 
 
 @sio.event
 async def delete_chat(sid, data):
     if isinstance(data, str):
-        data = json.loads(data)
+        try:
+            data = json.loads(data)
+        except json.JSONDecodeError:
+            await sio.emit('error', {'error': 'Invalid data format'}, room=sid)
+            return
 
     chat_id = data.get('chat_id')
-    user_id = data.get('user_id')
     delete_for_both = data.get('delete_for_both', False)
 
-    if not chat_id or not user_id:
+    # Получаем user_id таким же образом, как и в get_messages
+    socketio_logger.info(f"Connected users: {connected_users}")  # Заменено на logger
+    user_info = next((info for info in connected_users.values() if info['sid'] == sid), None)
+
+    if not user_info:
+        await sio.emit('error', {'error': 'Authentication failed'}, room=sid)
+        return
+
+    socketio_logger.info(f"User info for sid {sid}: {user_info}")  # Заменено на logger
+    user_id = user_info.get('user_id')
+
+    if not chat_id:
         await sio.emit('error', {'error': 'Invalid data'}, room=sid)
         return
 
@@ -354,7 +401,9 @@ async def delete_chat(sid, data):
 
         db.commit()
 
-        await sio.emit('delete_chat', {'chat_id': chat_id, 'delete_for_both': delete_for_both}, room=sid)
+        socketio_logger.info(f"User with ID {user_id} deleted chat with ID {chat_id}")  # Добавлено логирование
+
+        await sio.emit('delete_chat', {'chat_id': chat_id}, room=sid)
 
         if delete_for_both or (chat.deleted_for_user1 and chat.deleted_for_user2):
             recipient_id = chat.user1_id if chat.user2_id == user_id else chat.user2_id
@@ -362,7 +411,7 @@ async def delete_chat(sid, data):
 
             if recipient_info:
                 await sio.emit(
-                    'delete_chat', {'chat_id': chat_id, 'delete_for_both': delete_for_both}, room=recipient_info['sid'])
+                    'delete_chat', {'chat_id': chat_id}, room=recipient_info['sid'])
 
 
 @sio.event

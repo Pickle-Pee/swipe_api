@@ -8,7 +8,7 @@ from common.models.interests_models import Interest, UserInterest
 from common.utils.crud import delete_user_and_related_data
 from config import SessionLocal, logger
 from common.models.user_models import User, PushTokens
-from common.schemas.user_schemas import UserDataResponse, AddTokenRequest
+from common.schemas.user_schemas import UserDataResponse, AddTokenRequest, PersonalUserDataResponse, InterestResponse
 from common.utils.auth_utils import get_token, get_user_id_from_token
 import traceback
 import requests
@@ -17,36 +17,38 @@ import random
 router = APIRouter(prefix="/user", tags=["User Controller"])
 
 
-@router.get("/me", response_model=UserDataResponse, summary="Получение информации о текущем пользователе")
-def get_current_user(access_token: str = Depends(get_token)):
+@router.get("/me", response_model=PersonalUserDataResponse, summary="Получение информации о текущем пользователе")
+async def get_current_user(access_token: str = Depends(get_token)):
     with SessionLocal() as db:
-        try:
-            user_id = get_user_id_from_token(access_token)
-            user = db.query(User).filter(User.id == user_id).first()
-            city = db.query(City).filter(City.id == user.city_id).first()
-            city_name = city.city_name if city else None
-            user_interests = db.query(UserInterest).filter(UserInterest.user_id == user_id).all()
-            interests = [db.query(Interest).filter(Interest.id == ui.interest_id).first().interest_text for ui in
-                         user_interests]
-            if user:
-                return {
-                    "id": user.id,
-                    "first_name": user.first_name if user.first_name else None,
-                    "last_name": user.last_name if user.last_name else None,
-                    "date_of_birth": user.date_of_birth if user.date_of_birth else None,
-                    "gender": user.gender if user.gender else None,
-                    "verify": user.verify,
-                    "is_subscription": user.is_subscription,
-                    "city_name": city_name,
-                    "interests": interests,
-                    "about_me": user.about_me
-                }
-            else:
-                raise HTTPException(status_code=404, detail="Пользователь не найден")
-        except Exception as e:
-            traceback.print_exc()
-            print("Error retrieving user:", e)
-            raise HTTPException(status_code=500, detail="Internal server error")
+        user_id = get_user_id_from_token(access_token)
+        user = db.query(User).filter(User.id == user_id).one_or_none()
+
+        if user is None:
+            raise HTTPException(status_code=404, detail="Пользователь не найден")
+
+        city_name = db.query(City.city_name).filter(City.id == user.city_id).scalar()
+
+        # Получение интересов и их преобразование в список объектов InterestResponse
+        interests_data = db.query(Interest.id, Interest.interest_text).join(
+            UserInterest, UserInterest.interest_id == Interest.id
+        ).filter(UserInterest.user_id == user_id).all()
+
+        interests = [InterestResponse(interest_id=id, interest_text=text) for id, text in interests_data]
+
+        return {
+            "id": user.id,
+            "first_name": user.first_name,
+            "last_name": user.last_name,
+            "date_of_birth": user.date_of_birth,
+            "gender": user.gender,
+            "verify": user.verify,
+            "is_subscription": user.is_subscription,
+            "city_name": city_name,
+            "interests": interests if interests else None,
+            "about_me": user.about_me,
+            "status": user.status,
+            "avatar_url": user.avatar_url
+        }
 
 
 @router.get("/{user_id}", response_model=UserDataResponse, summary="Получение информации о пользователе")

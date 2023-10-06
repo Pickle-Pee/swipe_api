@@ -69,18 +69,40 @@ def get_chats(access_token: str = Depends(get_token)):
             )
 
             # Получить последнее сообщение в чате
-            last_message = db.query(Message).filter(Message.chat_id == chat.id).order_by(
+            last_message = db.query(Message).filter(
+                Message.chat_id == chat.id,
+                ((Message.deleted_for_user1.is_(False)) & (chat.user1_id == current_user)) |
+                ((Message.deleted_for_user2.is_(False)) & (chat.user2_id == current_user))
+            ).order_by(
                 Message.created_at.desc()
-                ).first()
-            last_message_content = last_message.content if last_message else None
-            last_message_status = status_mapping.get(last_message.status, None) if last_message else None
-            last_message_sender_id = last_message.sender_id if last_message else None
+            ).first()
+
+            if last_message:
+                message_type = last_message.message_type.name
+                if message_type == 'voice':
+                    last_message_content = 'Голосовое сообщение'
+                elif message_type == 'image':
+                    last_message_content = 'Изображение'
+                elif message_type == 'text':
+                    last_message_content = last_message.content
+                else:
+                    last_message_content = 'Неизвестный тип сообщения'
+
+                last_message_status = status_mapping.get(last_message.status, None)
+                last_message_sender_id = last_message.sender_id
+            else:
+                last_message_content = None
+                last_message_status = None
+                last_message_sender_id = None
+                message_type = None
 
             # Получить количество непрочитанных сообщений
             unread_count = db.query(Message).filter(
                 Message.chat_id == chat.id,
                 Message.status != 'read',
-                Message.sender_id != current_user
+                Message.sender_id != current_user,
+                ((Message.deleted_for_user1.is_(False)) & (chat.user1_id == current_user)) |
+                ((Message.deleted_for_user2.is_(False)) & (chat.user2_id == current_user))
             ).count()
 
             chat_response = ChatPersonResponse(
@@ -90,7 +112,8 @@ def get_chats(access_token: str = Depends(get_token)):
                 last_message=last_message_content,
                 unread_count=unread_count,
                 last_message_status=last_message_status,
-                last_message_sender_id=last_message_sender_id
+                last_message_sender_id=last_message_sender_id,
+                last_message_type=message_type
             )
 
             chat_responses.append(chat_response)

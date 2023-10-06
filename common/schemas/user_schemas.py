@@ -1,6 +1,6 @@
 from datetime import date, datetime
 from pydantic import BaseModel, field_validator
-from typing import Optional, List
+from typing import Optional, List, Tuple
 
 
 class UserCreate(BaseModel):
@@ -50,8 +50,28 @@ class UserDataResponse(BaseModel):
     about_me: Optional[str] = None
     status: Optional[str] = None
     avatar_url: Optional[str] = None
-    interests: Optional[List[str]] = None
+    interests: Optional[List[Tuple[int, str]]] = None
     match_percentage: Optional[int] = None
+
+
+class InterestResponse(BaseModel):
+    interest_id: int
+    interest_text: str
+
+
+class PersonalUserDataResponse(BaseModel):
+    id: int
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    date_of_birth: Optional[date] = None
+    gender: Optional[str] = None
+    verify: bool
+    is_subscription: bool
+    city_name: Optional[str] = None
+    about_me: Optional[str] = None
+    status: Optional[str] = None
+    avatar_url: Optional[str] = None
+    interests: Optional[List[InterestResponse]] = None
 
 
 class UserLikesResponse(BaseModel):

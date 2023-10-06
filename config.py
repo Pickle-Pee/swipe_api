@@ -8,6 +8,8 @@ import boto3
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
+# Environments configuration
+
 load_dotenv()
 
 os.environ["MYPYTHON"] = "True"
@@ -26,9 +28,25 @@ BUCKET_MESSAGE_VOICES = os.getenv("BUCKET_MESSAGE_VOICES")
 BUCKET_PROFILE_IMAGES = os.getenv("BUCKET_PROFILE_IMAGES")
 SMS_API_KEY = os.getenv("SMS_API_KEY")
 
+# Logging configuration
+
 logging.basicConfig(level=logging.DEBUG)
 # logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
 logger = logging.getLogger(__name__)
+
+
+class IgnorePingPongFilter(logging.Filter):
+    def filter(self, record):
+        return 'PING' not in record.msg and 'PONG' not in record.msg
+
+
+engineio_logger = logging.getLogger('engineio')
+engineio_logger.addFilter(IgnorePingPongFilter())
+
+socketio_logger = logging.getLogger('socketio')
+socketio_logger.addFilter(IgnorePingPongFilter())
+
+# Database configuration
 
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -42,4 +60,3 @@ s3_client = boto3.client(
     aws_secret_access_key=YANDEX_KEY,
     # region_name=REGION_KEY
 )
-
