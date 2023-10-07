@@ -4,7 +4,7 @@ import traceback
 
 import magic
 from datetime import datetime
-from typing import Optional, List
+from typing import Optional, List, Union
 
 import requests
 from dadata import Dadata
@@ -141,14 +141,23 @@ async def upload_message_voice(
 @router.post("/upload/profile_photo")
 async def upload_profile_image(
         file: UploadFile = File(...),
-        is_avatar: bool = False,
+        is_avatar: Union[bool, str] = False,
         access_token: str = Depends(get_token)):
+    if isinstance(is_avatar, str):
+        is_avatar = is_avatar.lower() in ['true', '1', 'yes']
+
     with SessionLocal() as db:
         user_id = get_user_id_from_token(access_token)
         user = db.query(User).filter(User.id == user_id).first()
 
         if not user:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Пользователь не найден")
+
+        if is_avatar:
+            current_avatar = db.query(UserPhoto).filter_by(user_id=user_id, is_avatar=True).first()
+            if current_avatar:
+                current_avatar.is_avatar = False
+                db.commit()
 
         mime = magic.Magic(mime=True)
         mime_type = mime.from_buffer(file.file.read(1024))
@@ -184,13 +193,16 @@ async def upload_profile_image(
                 user_id=user_id, photo_url=photo_url, is_avatar=is_avatar)
             db.add(new_photo)
             db.commit()
+
+            photo_id = new_photo.id
+
         except Exception as e:
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to upload file")
         finally:
             if os.path.exists(file_name):
                 os.remove(file_name)
 
-    return {"file_key": file_name}
+    return {"id": photo_id, "file_key": file_name}
 
 
 @router.get("/get_file/{file_key}")
