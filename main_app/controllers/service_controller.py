@@ -1,14 +1,17 @@
+import json
 import os
-import time
 import traceback
 
 import magic
 from datetime import datetime
 from typing import Optional, List
+
+import requests
 from dadata import Dadata
 from fastapi import UploadFile, File, APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
 
+from common.models.cities_models import City
 from common.models.user_models import User, UserPhoto
 from config import DADATA_API_TOKEN, DADATA_API_SECRET
 from config import s3_client, BUCKET_MESSAGE_IMAGES, BUCKET_MESSAGE_VOICES, BUCKET_PROFILE_IMAGES, SessionLocal, logger
@@ -138,6 +141,7 @@ async def upload_message_voice(
 @router.post("/upload/profile_photo")
 async def upload_profile_image(
         file: UploadFile = File(...),
+        is_avatar: bool = False,
         access_token: str = Depends(get_token)):
     with SessionLocal() as db:
         user_id = get_user_id_from_token(access_token)
@@ -148,7 +152,7 @@ async def upload_profile_image(
 
         mime = magic.Magic(mime=True)
         mime_type = mime.from_buffer(file.file.read(1024))
-        file.file.seek(0)  # сброс указателя файла в начало
+        file.file.seek(0)
 
         mime_to_ext = {
             "image/jpeg": "jpg",
@@ -175,10 +179,9 @@ async def upload_profile_image(
             with open(file_name, "rb") as f:
                 s3_client.upload_fileobj(f, BUCKET_PROFILE_IMAGES, file_name)
 
-            # Вставка записи о фотографии в БД
             photo_url = f"/service/get_file/{file_name}"
             new_photo = UserPhoto(
-                user_id=user_id, photo_url=photo_url, is_avatar=False)
+                user_id=user_id, photo_url=photo_url, is_avatar=is_avatar)
             db.add(new_photo)
             db.commit()
         except Exception as e:
@@ -220,23 +223,24 @@ async def get_file(file_key: str, access_token: str = Depends(get_token)):
 
 @router.get("/cities", response_model=List[str])
 async def get_cities(query: str):
-    try:
-        dadata = Dadata(DADATA_API_TOKEN, DADATA_API_SECRET)
-        result = dadata.clean("address", query)
+    with SessionLocal() as db:
+        try:
+            query = query.lower().strip()
+            query = "%" + query + "%"
 
-        city = result.get("region")
-        if not city:
+            cities = db.query(City.city_name).filter(City.city_name.ilike(query)).limit(5).all()
+
+            if not cities:
+                raise HTTPException(
+                    status_code=404,
+                    detail="Город не найден")
+
+            cities = [city[0] for city in cities]
+            return cities
+
+        except Exception as e:
+            print(f"Error occurred while querying the database: {e}")
+            print(traceback.format_exc())
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Город не найден",
-            )
-
-        return [city]
-
-    except Exception as e:
-        print(f"Error occurred while making a request to DaData: {e}")
-        print(traceback.format_exc())
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Ошибка при запросе к сервису DaData",
-        )
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Ошибка при запросе к базе данных")
