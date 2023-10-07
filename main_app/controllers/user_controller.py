@@ -1,16 +1,14 @@
 from fastapi import HTTPException, APIRouter, Depends
 from fastapi.responses import Response
 from typing import List, Optional
-
 from sqlalchemy import text
-
 from common.models.cities_models import City
 from common.models.interests_models import Interest, UserInterest
 from common.utils.crud import delete_user_and_related_data
 from config import SessionLocal, logger
-from common.models.user_models import User, PushTokens
+from common.models.user_models import User, PushTokens, UserPhoto
 from common.schemas.user_schemas import UserDataResponse, AddTokenRequest, PersonalUserDataResponse, InterestResponse, \
-    UpdateUserRequest, UpdateUserResponse
+    UpdateUserRequest, UserPhotosResponse
 from common.utils.auth_utils import get_token, get_user_id_from_token
 import traceback
 import requests
@@ -37,6 +35,12 @@ async def get_current_user(access_token: str = Depends(get_token)):
 
         interests = [InterestResponse(interest_id=id, interest_text=text) for id, text in interests_data]
 
+        avatar = db.query(UserPhoto).filter(
+            UserPhoto.is_avatar == True
+        ).first()
+
+        avatar_url = avatar.photo_url if avatar else None
+
         return {
             "id": user.id,
             "first_name": user.first_name,
@@ -49,7 +53,7 @@ async def get_current_user(access_token: str = Depends(get_token)):
             "interests": interests if interests else None,
             "about_me": user.about_me,
             "status": user.status,
-            "avatar_url": user.avatar_url
+            "avatar_url": avatar_url
         }
 
 
@@ -249,15 +253,6 @@ async def update_user(data: UpdateUserRequest, access_token: str = Depends(get_t
                 if city:
                     user.city_id = city.id
 
-            if data.interests:
-                # Удаление текущих интересов пользователя
-                db.query(UserInterest).filter(UserInterest.user_id == user_id).delete()
-
-                # Добавление новых интересов
-                for interest in data.interests:
-                    new_user_interest = UserInterest(user_id=user_id, interest_id=interest.interest_id)
-                    db.add(new_user_interest)
-
             if data.about_me:
                 user.about_me = data.about_me
 
@@ -269,3 +264,42 @@ async def update_user(data: UpdateUserRequest, access_token: str = Depends(get_t
             print("Exception:", e)
             db.rollback()
             raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@router.post("/set_avatar/{photo_id}")
+async def set_avatar(photo_id: int, access_token: str = Depends(get_token)):
+    with SessionLocal() as db:
+        try:
+            user_id = get_user_id_from_token(access_token)
+            photo = db.query(UserPhoto).filter(UserPhoto.id == photo_id, UserPhoto.user_id == user_id).first()
+
+            if not photo:
+                raise HTTPException(status_code=404, detail="Фотография не найдена")
+
+            photo.set_as_avatar(db)
+
+        except Exception as e:
+            print("Exception:", e)
+            db.rollback()
+            raise HTTPException(status_code=500, detail="Internal server error")
+
+    return {"detail": "Аватар успешно установлен"}
+
+
+@router.get("/user/photos", response_model=UserPhotosResponse)
+async def get_user_photos(access_token: str = Depends(get_token)):
+    with SessionLocal() as db:
+        try:
+            user_id = get_user_id_from_token(access_token)
+
+            photos = db.query(UserPhoto).filter(UserPhoto.user_id == user_id).all()
+
+            if not photos:
+                raise HTTPException(status_code=404, detail="Фото не найдены")
+
+        except Exception as e:
+            print("Exception:", e)
+            db.rollback()
+            raise HTTPException(status_code=500, detail="Internal server error")
+
+    return {"photos": photos}

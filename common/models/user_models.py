@@ -27,6 +27,8 @@ class User(Base):
     city = relationship("City")
     tokens = relationship("PushTokens", back_populates="user", cascade="all, delete-orphan")
     messages = relationship("Message", back_populates="sender", lazy="dynamic")
+    photos = relationship("UserPhoto", back_populates="user")
+
 
 class PushTokens(Base):
     __tablename__ = "push_tokens"
@@ -37,3 +39,22 @@ class PushTokens(Base):
     active = Column(Boolean, default=True, nullable=False)
 
     user = relationship("User", back_populates="tokens")
+
+
+class UserPhoto(Base):
+    __tablename__ = 'user_photos'
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
+    photo_url = Column(String, nullable=False)
+    is_avatar = Column(Boolean, default=False)
+
+    user = relationship("User", back_populates="photos")
+
+    def set_as_avatar(self, session):
+        session.query(UserPhoto).filter(
+            UserPhoto.user_id == self.user_id
+        ).update({UserPhoto.is_avatar: False})
+
+        self.is_avatar = True
+        session.commit()

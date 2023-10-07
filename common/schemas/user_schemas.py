@@ -95,9 +95,35 @@ class UpdateUserRequest(BaseModel):
     date_of_birth: Optional[date] = None
     gender: Optional[str] = None
     city_name: Optional[str] = None
-    interests: Optional[List[InterestResponse]] = None
     about_me: Optional[str] = None
 
 
 class UpdateUserResponse(BaseModel):
     message: str
+
+
+class UserPhotoCreate(BaseModel):
+    user_id: int
+    photo_url: str
+    is_avatar: bool
+
+
+class UserPhotoInDB(UserPhotoCreate):
+    id: int
+
+    class Config:
+        orm_mode = True
+
+
+class UserPhotoResponse(BaseModel):
+    id: int
+    user_id: int
+    photo_url: str
+    is_avatar: bool
+
+    class Config:
+        orm_mode = True
+
+
+class UserPhotosResponse(BaseModel):
+    photos: List[UserPhotoResponse]

@@ -1,22 +1,16 @@
-from random import shuffle, choice
-
 from fastapi import HTTPException, APIRouter, Depends
 from typing import List
-
 from sqlalchemy import text
-
 from common.models.cities_models import City
 from common.schemas.match_schemas import MatchResponse
 from common.models.user_models import User
 from common.models.interests_models import Interest
 from common.utils.auth_utils import get_token, get_user_id_from_token
-from config import SessionLocal, SECRET_KEY
+from config import SessionLocal
+from datetime import datetime, timedelta
 
 
 router = APIRouter(prefix="/match", tags=["Matches Controller"])
-
-
-from datetime import datetime, timedelta
 
 
 @router.get("/find_matches", response_model=List[MatchResponse])
@@ -38,48 +32,51 @@ def find_matches(access_token: str = Depends(get_token)):
         time_threshold = datetime.now() - timedelta(seconds=30)
 
         # SQL-запрос для поиска совпадений
-        sql_query = text(f"""
-        SELECT 
-            users.id,
-            users.first_name,
-            users.last_name,
-            users.date_of_birth,
-            users.gender,
-            users.city_id,
-            users.verify,
-            users.avatar_url,
-            users.status,
-            cities.city_name,
-            COALESCE(SUM(
-                CASE 
-                    WHEN interests.interest_text IN ({interests_str}) THEN 3
-                    ELSE 0
-                END +
-                CASE 
-                    WHEN cities.city_name IN ({cities_str}) THEN 1
-                    ELSE 0
-                END
-            ), 0) AS score
-        FROM 
-            users
-        LEFT JOIN 
-            user_interests ON users.id = user_interests.user_id
-        LEFT JOIN 
-            interests ON user_interests.interest_id = interests.id
-        LEFT JOIN 
-            cities ON users.city_id = cities.id
-        WHERE 
-            users.id != :user_id AND
-            NOT EXISTS (
-                SELECT 1 FROM likes 
-                WHERE likes.liked_user_id = users.id AND likes.user_id = :user_id AND likes.timestamp > :time_threshold
-            )
-        GROUP BY 
-            users.id, users.first_name, users.last_name, cities.city_name
-        ORDER BY 
-            score DESC, RANDOM()
-        LIMIT 10;
-        """)
+        sql_query = text(
+            f"""
+                SELECT 
+                    users.id,
+                    users.first_name,
+                    users.last_name,
+                    users.date_of_birth,
+                    users.gender,
+                    users.city_id,
+                    users.verify,
+                    user_photos.photo_url as avatar_url,  # Измененный код
+                    users.status,
+                    cities.city_name,
+                    COALESCE(SUM(
+                        CASE 
+                            WHEN interests.interest_text IN ({interests_str}) THEN 3
+                            ELSE 0
+                        END +
+                        CASE 
+                            WHEN cities.city_name IN ({cities_str}) THEN 1
+                            ELSE 0
+                        END
+                    ), 0) AS score
+                FROM 
+                    users
+                LEFT JOIN 
+                    user_interests ON users.id = user_interests.user_id
+                LEFT JOIN 
+                    interests ON user_interests.interest_id = interests.id
+                LEFT JOIN 
+                    cities ON users.city_id = cities.id
+                LEFT JOIN 
+                    user_photos ON users.id = user_photos.user_id AND user_photos.is_avatar = TRUE  # Измененный код
+                WHERE 
+                    users.id != :user_id AND
+                    NOT EXISTS (
+                        SELECT 1 FROM likes 
+                        WHERE likes.liked_user_id = users.id AND likes.user_id = :user_id AND likes.timestamp > :time_threshold
+                    )
+                GROUP BY 
+                    users.id, users.first_name, users.last_name, cities.city_name, user_photos.photo_url  # Измененный код
+                ORDER BY 
+                    score DESC, RANDOM()
+                LIMIT 10;
+                """)
 
         result = db.execute(sql_query, {'user_id': user_id, 'time_threshold': time_threshold}).fetchall()
 

@@ -1,14 +1,16 @@
 import os
 import time
+import traceback
+
 import magic
 from datetime import datetime
-from typing import Optional
-
+from typing import Optional, List
+from dadata import Dadata
 from fastapi import UploadFile, File, APIRouter, Depends, HTTPException, status
-from fastapi.responses import StreamingResponse, JSONResponse
+from fastapi.responses import StreamingResponse
 
-from common.models.user_models import User
-from common.utils.service_utils import get_cities
+from common.models.user_models import User, UserPhoto
+from config import DADATA_API_TOKEN, DADATA_API_SECRET
 from config import s3_client, BUCKET_MESSAGE_IMAGES, BUCKET_MESSAGE_VOICES, BUCKET_PROFILE_IMAGES, SessionLocal, logger
 from common.utils.auth_utils import get_user_id_from_token, get_token
 
@@ -142,26 +144,49 @@ async def upload_profile_image(
         user = db.query(User).filter(User.id == user_id).first()
 
         if not user:
-            raise HTTPException(status_code=404, detail="Пользователь не найден")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Пользователь не найден")
 
-        db.commit()
+        mime = magic.Magic(mime=True)
+        mime_type = mime.from_buffer(file.file.read(1024))
+        file.file.seek(0)  # сброс указателя файла в начало
 
-    image_id = str(int(time.time()))
+        mime_to_ext = {
+            "image/jpeg": "jpg",
+            "image/png": "png",
+            "image/gif": "gif",
+            "image/bmp": "bmp",
+            "image/tiff": "tiff",
+            "image/webp": "webp",
+            "image/heic": "heic",
+            "image/heif": "heif",
+        }
 
-    extension = file.filename.split(".")[-1]
-    file_name = f"profile_{user_id}_{image_id}.{extension}"
-    with open(file_name, "wb") as buffer:
-        buffer.write(file.file.read())
+        extension = mime_to_ext.get(mime_type)
+        if extension is None:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unsupported file type")
 
-    try:
-        with open(file_name, "rb") as f:
-            s3_client.upload_fileobj(f, BUCKET_PROFILE_IMAGES, file_name)
-        logger.info(f"File {file_name} uploaded successfully to S3")
-    except Exception as e:
-        logger.error(f"Failed to upload file {file_name} to S3: {e}")
-        raise HTTPException(status_code=500, detail="Failed to upload file")
+        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+        file_name = f"profile_{user_id}_{timestamp}.{extension}"
 
-    os.remove(file_name)
+        try:
+            with open(file_name, "wb") as buffer:
+                buffer.write(file.file.read())
+
+            with open(file_name, "rb") as f:
+                s3_client.upload_fileobj(f, BUCKET_PROFILE_IMAGES, file_name)
+
+            # Вставка записи о фотографии в БД
+            photo_url = f"http://193.164.150.223:1024/service/get_file/{file_name}"
+            new_photo = UserPhoto(
+                user_id=user_id, photo_url=photo_url, is_avatar=False)
+            db.add(new_photo)
+            db.commit()
+        except Exception as e:
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to upload file")
+        finally:
+            if os.path.exists(file_name):
+                os.remove(file_name)
+
     return {"file_key": file_name}
 
 
@@ -193,10 +218,25 @@ async def get_file(file_key: str, access_token: str = Depends(get_token)):
     raise HTTPException(status_code=404, detail=f"File with key {file_key} not found in any bucket")
 
 
-@router.get("/cities/{query}")
-async def cities(query: str):
+@router.get("/cities", response_model=List[str])
+async def get_cities(query: str):
     try:
-        cities = await get_cities(query)
-        return JSONResponse(content=cities, status_code=status.HTTP_200_OK)
+        dadata = Dadata(DADATA_API_TOKEN, DADATA_API_SECRET)
+        result = dadata.clean("address", query)
+
+        city = result.get("region")
+        if not city:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Город не найден",
+            )
+
+        return [city]
+
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"Error occurred while making a request to DaData: {e}")
+        print(traceback.format_exc())
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Ошибка при запросе к сервису DaData",
+        )

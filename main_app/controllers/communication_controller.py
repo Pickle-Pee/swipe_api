@@ -4,7 +4,7 @@ from typing import List
 from common.models.communication_models import Chat, Message
 from fastapi import Depends, APIRouter, HTTPException
 
-from common.models.user_models import User
+from common.models.user_models import User, UserPhoto
 from common.schemas.communication_schemas import CreateChatRequest, \
     CreateChatResponse, UserInChat, ChatPersonResponse, ChatDetailsResponse
 from config import SessionLocal
@@ -59,13 +59,19 @@ def get_chats(access_token: str = Depends(get_token)):
             today = date.today()
             age = today.year - user.date_of_birth.year - ((today.month, today.day) < (user.date_of_birth.month,
                                                                                       user.date_of_birth.day))
+            avatar = db.query(UserPhoto).filter(
+                UserPhoto.user_id == other_user_id,
+                UserPhoto.is_avatar == True
+            ).first()
+
+            avatar_url = avatar.photo_url if avatar else None
 
             user2_data = UserInChat(
                 user_id=user.id,
                 first_name=user.first_name,
                 user_age=age,
                 status=user.status,
-                avatar_url=user.avatar_url if user.avatar_url is not None else None,
+                avatar_url=avatar_url
             )
 
             # Получить последнее сообщение в чате
