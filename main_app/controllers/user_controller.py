@@ -28,7 +28,6 @@ async def get_current_user(access_token: str = Depends(get_token)):
 
         city_name = db.query(City.city_name).filter(City.id == user.city_id).scalar()
 
-        # Получение интересов и их преобразование в список объектов InterestResponse
         interests_data = db.query(Interest.id, Interest.interest_text).join(
             UserInterest, UserInterest.interest_id == Interest.id
         ).filter(UserInterest.user_id == user_id).all()
@@ -36,7 +35,8 @@ async def get_current_user(access_token: str = Depends(get_token)):
         interests = [InterestResponse(interest_id=id, interest_text=text) for id, text in interests_data]
 
         avatar = db.query(UserPhoto).filter(
-            UserPhoto.is_avatar == True
+            UserPhoto.user_id == user_id,
+            UserPhoto.is_avatar.is_(True)
         ).first()
 
         avatar_url = avatar.photo_url if avatar else None
@@ -53,7 +53,7 @@ async def get_current_user(access_token: str = Depends(get_token)):
             "interests": interests if interests else None,
             "about_me": user.about_me,
             "status": user.status,
-            "avatar_url": avatar_url
+            "avatar_url": avatar_url  # Эта строка теперь получает URL аватара из новой таблицы
         }
 
 
@@ -274,7 +274,7 @@ async def set_avatar(photo_id: int, access_token: str = Depends(get_token)):
             photo = db.query(UserPhoto).filter(UserPhoto.id == photo_id, UserPhoto.user_id == user_id).first()
 
             if not photo:
-                raise HTTPException(status_code=404, detail="Фотография не найдена")
+                raise HTTPException(status_code=200, detail="Фотография не найдена")
 
             photo.set_as_avatar(db)
 
@@ -295,7 +295,7 @@ async def get_user_photos(access_token: str = Depends(get_token)):
             photos = db.query(UserPhoto).filter(UserPhoto.user_id == user_id).all()
 
             if not photos:
-                raise HTTPException(status_code=404, detail="Фото не найдены")
+                return {"photos": []}
 
         except Exception as e:
             print("Exception:", e)

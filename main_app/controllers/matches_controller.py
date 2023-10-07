@@ -34,50 +34,50 @@ def find_matches(access_token: str = Depends(get_token)):
         # SQL-запрос для поиска совпадений
         sql_query = text(
             f"""
-                SELECT 
-                    users.id,
-                    users.first_name,
-                    users.last_name,
-                    users.date_of_birth,
-                    users.gender,
-                    users.city_id,
-                    users.verify,
-                    user_photos.photo_url as avatar_url,  # Измененный код
-                    users.status,
-                    cities.city_name,
-                    COALESCE(SUM(
-                        CASE 
-                            WHEN interests.interest_text IN ({interests_str}) THEN 3
-                            ELSE 0
-                        END +
-                        CASE 
-                            WHEN cities.city_name IN ({cities_str}) THEN 1
-                            ELSE 0
-                        END
-                    ), 0) AS score
-                FROM 
-                    users
-                LEFT JOIN 
-                    user_interests ON users.id = user_interests.user_id
-                LEFT JOIN 
-                    interests ON user_interests.interest_id = interests.id
-                LEFT JOIN 
-                    cities ON users.city_id = cities.id
-                LEFT JOIN 
-                    user_photos ON users.id = user_photos.user_id AND user_photos.is_avatar = TRUE  # Измененный код
-                WHERE 
-                    users.id != :user_id AND
-                    NOT EXISTS (
-                        SELECT 1 FROM likes 
-                        WHERE likes.liked_user_id = users.id AND likes.user_id = :user_id AND likes.timestamp > :time_threshold
-                    )
-                GROUP BY 
-                    users.id, users.first_name, users.last_name, cities.city_name, user_photos.photo_url  # Измененный код
-                ORDER BY 
-                    score DESC, RANDOM()
-                LIMIT 10;
-                """)
-
+            SELECT 
+                users.id,
+                users.first_name,
+                users.last_name,
+                users.date_of_birth,
+                users.gender,
+                users.city_id,
+                users.verify,
+                user_photos.photo_url as avatar_url,
+                users.status,
+                cities.city_name,
+                COALESCE(SUM(
+                    CASE 
+                        WHEN interests.interest_text IN ({interests_str}) THEN 3
+                        ELSE 0
+                    END +
+                    CASE 
+                        WHEN cities.city_name IN ({cities_str}) THEN 1
+                        ELSE 0
+                    END
+                ), 0) AS score
+            FROM 
+                users
+            LEFT JOIN 
+                user_interests ON users.id = user_interests.user_id
+            LEFT JOIN 
+                interests ON user_interests.interest_id = interests.id
+            LEFT JOIN 
+                cities ON users.city_id = cities.id
+            LEFT JOIN 
+                user_photos ON users.id = user_photos.user_id AND user_photos.is_avatar = TRUE
+            WHERE 
+                users.id != :user_id AND
+                NOT EXISTS (
+                    SELECT 1 FROM likes 
+                    WHERE likes.liked_user_id = users.id AND likes.user_id = :user_id AND likes.timestamp > :time_threshold
+                )
+            GROUP BY 
+                users.id, users.first_name, users.last_name, cities.city_name, user_photos.photo_url
+            ORDER BY 
+                score DESC, RANDOM()
+            LIMIT 10;
+        """
+            )
         result = db.execute(sql_query, {'user_id': user_id, 'time_threshold': time_threshold}).fetchall()
 
         matches = [

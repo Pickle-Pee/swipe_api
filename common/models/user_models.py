@@ -18,7 +18,6 @@ class User(Base):
     city_id = Column(Integer, ForeignKey('cities.id'))
     about_me = Column(Text)
     status = Column(Text)
-    avatar_url = Column(Text)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow)
 

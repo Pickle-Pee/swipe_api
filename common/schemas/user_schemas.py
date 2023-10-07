@@ -103,7 +103,6 @@ class UpdateUserResponse(BaseModel):
 
 
 class UserPhotoCreate(BaseModel):
-    user_id: int
     photo_url: str
     is_avatar: bool
 
@@ -117,7 +116,6 @@ class UserPhotoInDB(UserPhotoCreate):
 
 class UserPhotoResponse(BaseModel):
     id: int
-    user_id: int
     photo_url: str
     is_avatar: bool
 
