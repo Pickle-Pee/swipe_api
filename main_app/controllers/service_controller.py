@@ -11,7 +11,7 @@ from dadata import Dadata
 from fastapi import UploadFile, File, APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
 
-from common.models.cities_models import City
+from common.models.cities_models import City, Region
 from common.models.user_models import User, UserPhoto
 from config import DADATA_API_TOKEN, DADATA_API_SECRET
 from config import s3_client, BUCKET_MESSAGE_IMAGES, BUCKET_MESSAGE_VOICES, BUCKET_PROFILE_IMAGES, SessionLocal, logger
@@ -228,14 +228,26 @@ async def get_cities(query: str):
             query = query.lower().strip()
             query = "%" + query + "%"
 
-            cities = db.query(City.city_name).filter(City.city_name.ilike(query)).limit(5).all()
+            results = db.query(City.city_name, City.region_id, Region.name).join(Region, City.region_id == Region.id)\
+                .filter(City.city_name.ilike(query)).limit(5).all()
 
-            if not cities:
+            if not results:
                 raise HTTPException(
                     status_code=404,
                     detail="Город не найден")
 
-            cities = [city[0] for city in cities]
+            city_counts = {}
+            for result in results:
+                city_name = result[0]
+                city_counts[city_name] = city_counts.get(city_name, 0) + 1
+
+            cities = []
+            for result in results:
+                city_name, region_id, region_name = result
+                if city_counts[city_name] > 1:
+                    city_name += f" ({region_name})"
+                cities.append(city_name)
+
             return cities
 
         except Exception as e:

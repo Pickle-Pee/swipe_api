@@ -1,6 +1,11 @@
+import traceback
+
 from fastapi import HTTPException, status, APIRouter, Depends
 from fastapi.responses import JSONResponse
+from sqlalchemy import func
+
 from common.models.auth_models import TemporaryCode, RefreshToken
+from common.models.cities_models import City, Region
 from common.models.user_models import User
 from common.models.error_models import ErrorResponse
 from common.schemas.auth_schemas import TokenResponse, CheckCodeResponse, VerificationResponse
@@ -126,26 +131,38 @@ def register(user_data: UserCreate):
             if not stored_code:
                 raise HTTPException(status_code=400, detail="Invalid verification code")
 
-            # Создание объекта UserCreate на основе переданных аргументов
-            new_user_data = UserCreate(
+            if ' (' in user_data.city_name:
+                city_name, region_name = user_data.city_name.rsplit(' (', 1)
+                region_name = region_name.rstrip(')')
+            else:
+                city_name = user_data.city_name.strip()
+                region_name = None
+
+            city = db.query(City) \
+                .join(Region, City.region_id == Region.id) \
+                .filter(func.lower(City.city_name) == city_name.lower()) \
+                .filter(func.lower(Region.name) == region_name.lower() if region_name else True) \
+                .first()
+
+            if not city and region_name:
+                city = db.query(City) \
+                    .filter(func.lower(City.city_name) == city_name.lower()) \
+                    .first()
+
+            if not city:
+                raise HTTPException(status_code=404, detail="City not found")
+
+            city_id = city.id
+
+            new_user = User(
                 phone_number=user_data.phone_number,
                 first_name=user_data.first_name,
                 last_name=user_data.last_name,
                 date_of_birth=user_data.date_of_birth,
                 gender=user_data.gender,
                 verify=user_data.verify,
-                city_id=user_data.city_id
-            )
-
-            # Добавление данных пользователя в базу данных
-            new_user = User(
-                phone_number=new_user_data.phone_number,
-                first_name=new_user_data.first_name,
-                last_name=new_user_data.last_name,
-                date_of_birth=new_user_data.date_of_birth,
-                gender=new_user_data.gender,
-                verify=user_data.verify,
-                city_id=user_data.city_id
+                city_id=city_id,
+                is_subscription=False
             )
             db.add(new_user)
             db.commit()
@@ -165,8 +182,12 @@ def register(user_data: UserCreate):
 
             token_response = TokenResponse(access_token=f"Bearer {access_token}", refresh_token=refresh_token)
             return token_response
+
+        except HTTPException as he:
+            raise he
         except Exception as e:
             print("Error registering user:", e)
+            traceback.print_exc()
             raise HTTPException(status_code=500, detail="Error registering user")
 
 

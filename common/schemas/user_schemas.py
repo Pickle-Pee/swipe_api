@@ -9,9 +9,9 @@ class UserCreate(BaseModel):
     last_name: str
     date_of_birth: date
     gender: str
-    verify: bool = True  # Значение по умолчанию установлено в True
-    city_id: Optional[str] = "1"  # Значение по умолчанию установлено в "1"
-    status: str = "online"  # Значение по умолчанию установлено в "online"
+    verify: bool = False
+    city_name: str
+    status: str = "offline"
 
     @field_validator("phone_number")
     def validate_phone_number(cls, value):
