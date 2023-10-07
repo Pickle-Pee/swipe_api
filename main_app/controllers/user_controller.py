@@ -1,4 +1,4 @@
-from fastapi import HTTPException, APIRouter, Depends
+from fastapi import HTTPException, APIRouter, Depends, status
 from fastapi.responses import Response
 from typing import List, Optional
 from sqlalchemy import text
@@ -303,3 +303,22 @@ async def get_user_photos(access_token: str = Depends(get_token)):
             raise HTTPException(status_code=500, detail="Internal server error")
 
     return {"photos": photos}
+
+
+@router.delete("/photos/{photo_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_photo(photo_id: int, access_token: str = Depends(get_token)):
+    with SessionLocal() as db:
+        try:
+            user_id = get_user_id_from_token(access_token)
+            photo = db.query(UserPhoto).filter(UserPhoto.id == photo_id, UserPhoto.user_id == user_id).first()
+
+            if not photo:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Фото не найдено")
+
+            db.delete(photo)
+            db.commit()
+
+        except Exception as e:
+            print("Exception:", e)
+            db.rollback()
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")

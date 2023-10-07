@@ -176,7 +176,7 @@ async def upload_profile_image(
                 s3_client.upload_fileobj(f, BUCKET_PROFILE_IMAGES, file_name)
 
             # Вставка записи о фотографии в БД
-            photo_url = f"http://193.164.150.223:1024/service/get_file/{file_name}"
+            photo_url = f"/service/get_file/{file_name}"
             new_photo = UserPhoto(
                 user_id=user_id, photo_url=photo_url, is_avatar=False)
             db.add(new_photo)
@@ -193,7 +193,7 @@ async def upload_profile_image(
 @router.get("/get_file/{file_key}")
 async def get_file(file_key: str, access_token: str = Depends(get_token)):
 
-    BUCKETS = [BUCKET_MESSAGE_IMAGES, BUCKET_MESSAGE_VOICES]
+    BUCKETS = [BUCKET_MESSAGE_IMAGES, BUCKET_MESSAGE_VOICES, BUCKET_PROFILE_IMAGES]
 
     with SessionLocal() as db:
         user_id = get_user_id_from_token(access_token)
