@@ -1,8 +1,12 @@
 import json
 import os
+
+import httpx
 import socketio
 from datetime import datetime
 from common.utils.auth_utils import get_user_id_from_token
+from common.utils.service_utils import send_push_notification
+from common.utils.user_utils import get_user_push_token, get_user_name
 from config import SessionLocal, logger, engine, socketio_logger
 from urllib.parse import parse_qs
 
@@ -143,6 +147,7 @@ async def send_message(sid, data):
     message_type = data.get('message_type', 'text')
     media_urls = data.get('media_urls', [])
 
+
     with SessionLocal() as db:
         new_message = Message(
             chat_id=chat_id,
@@ -185,6 +190,17 @@ async def send_message(sid, data):
                     'media_urls': media_urls
                 }, room=recipient_sid
             )
+
+        sender_name = await get_user_name(sender_id)
+        if sender_name:
+            title = sender_name
+        else:
+            title = "Новое сообщение"
+
+        push_token = await get_user_push_token(recipient_id)
+        if push_token:
+            body = message_content
+            await send_push_notification(push_token, title, body)
 
     await sio.emit(
         'completer', {

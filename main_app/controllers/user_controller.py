@@ -187,7 +187,7 @@ def add_token(request: AddTokenRequest, access_token: str = Depends(get_token)):
             if not user:
                 raise HTTPException(status_code=404, detail="Пользователь не найден")
 
-            existing_push_token = db.query(PushTokens).filter(PushTokens.userid == user_id).first()
+            existing_push_token = db.query(PushTokens).filter(PushTokens.user_id == user_id).first()
 
             if existing_push_token:
                 # Обновление существующего токена

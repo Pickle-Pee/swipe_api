@@ -33,7 +33,7 @@ class PushTokens(Base):
     __tablename__ = "push_tokens"
 
     id = Column(Integer, primary_key=True, index=True)
-    userid = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     token = Column(String, nullable=False)
     active = Column(Boolean, default=True, nullable=False)
 

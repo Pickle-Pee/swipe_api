@@ -1,5 +1,6 @@
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy import create_engine
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 from dotenv import load_dotenv
 import os
@@ -15,6 +16,7 @@ load_dotenv()
 os.environ["MYPYTHON"] = "True"
 
 DATABASE_URL = os.getenv("DATABASE_URL")
+ASYNC_DATABASE_URL = os.getenv("ASYNC_DATABASE_URL")
 SECRET_KEY = os.getenv("SECRET_KEY")
 DADATA_API_TOKEN = os.getenv("DADATA_API_TOKEN")
 DADATA_API_SECRET = os.getenv("DADATA_API_SECRET")
@@ -50,7 +52,10 @@ socketio_logger.addFilter(IgnorePingPongFilter())
 # Database configuration
 
 engine = create_engine(DATABASE_URL)
+asyncEngine = create_async_engine(ASYNC_DATABASE_URL, echo=True)
+
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+AsyncSessionLocal = sessionmaker(bind=asyncEngine, class_=AsyncSession, expire_on_commit=False,)
 
 Base = declarative_base()
 
