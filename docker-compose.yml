@@ -28,6 +28,21 @@ services:
     env_file:
       - .env
 
+  push_app:
+    build: ./push_app
+    ports:
+      - "1026:1026"
+    environment:
+      - PYTHONPATH=/app
+    volumes:
+      - ./common:/app/common
+      - ./config.py:/app/config.py
+      - /root/swipe_api/common/utils:/app/common/utils
+    networks:
+      - swipe_network
+    env_file:
+      - .env
+
 networks:
   swipe_network:
     driver: bridge
