@@ -31,13 +31,11 @@ async def send_push_notification(token, title, body):
         "body": body
     }
 
-    # Логирование запроса
     logger.info(f"Sending push notification: {json.dumps(payload, indent=2)}")
 
     async with httpx.AsyncClient() as client:
         response = await client.post(url, json=payload)
 
-        # Логирование ответа
         logger.info(f"Received response: {response.status_code} - {response.text}")
 
         if response.status_code != 200:

@@ -199,7 +199,14 @@ async def send_message(sid, data):
 
         push_token = await get_user_push_token(recipient_id)
         if push_token:
-            body = message_content
+            if message_content is None:
+                logger.error("message_content is None, cannot send push notification.")
+            else:
+                body = message_content
+                # logger.info(
+                #     f"Preparing to send push notification with token {push_token}, title {title}, and body {body}")
+                # response = await send_push_notification(push_token, title, body)
+                # logger.info(f"Push notification response: {response}")
             await send_push_notification(push_token, title, body)
 
     await sio.emit(
