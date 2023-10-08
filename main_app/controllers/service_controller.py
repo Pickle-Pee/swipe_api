@@ -206,18 +206,9 @@ async def upload_profile_image(
 
 
 @router.get("/get_file/{file_key}")
-async def get_file(file_key: str, access_token: str = Depends(get_token)):
+async def get_file(file_key: str):
 
     BUCKETS = [BUCKET_MESSAGE_IMAGES, BUCKET_MESSAGE_VOICES, BUCKET_PROFILE_IMAGES]
-
-    with SessionLocal() as db:
-        user_id = get_user_id_from_token(access_token)
-        user = db.query(User).filter(User.id == user_id).first()
-
-        if not user:
-            raise HTTPException(status_code=404, detail="Пользователь не найден")
-
-        db.commit()
 
     for bucket in BUCKETS:
         try:
