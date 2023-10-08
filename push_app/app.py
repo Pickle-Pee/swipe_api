@@ -2,10 +2,11 @@ from fastapi import FastAPI, HTTPException, status
 from pydantic import BaseModel
 import firebase_admin
 from firebase_admin import messaging, credentials
+from config import FIREBASE_CREDENTIALS_PATH
 
 app = FastAPI()
 
-cred = credentials.Certificate('../common/utils/swipe-5da7e-firebase-adminsdk-uiosd-e4d43db1df.json')
+cred = credentials.Certificate(FIREBASE_CREDENTIALS_PATH)
 firebase_admin.initialize_app(cred)
 
 
