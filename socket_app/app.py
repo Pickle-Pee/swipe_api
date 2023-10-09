@@ -147,7 +147,6 @@ async def send_message(sid, data):
     message_type = data.get('message_type', 'text')
     media_urls = data.get('media_urls', [])
 
-
     with SessionLocal() as db:
         new_message = Message(
             chat_id=chat_id,
@@ -161,13 +160,16 @@ async def send_message(sid, data):
         db.add(new_message)
         db.flush()
 
-        # Добавляем каждый медиафайл в таблицу media
+        message_id = new_message.id
+
+        # Логирование добавления медиа
         for url in media_urls:
             media = Media(message_id=new_message.id, media_url=url, media_type=message_type)
             db.add(media)
+            socketio_logger.info(f"Media with URL {url} added to message ID {message_id}")
 
         db.commit()
-        message_id = new_message.id
+        socketio_logger.info(f"Message ID {message_id} committed to database")
 
         chat = db.query(Chat).filter(Chat.id == chat_id).first()
         if chat is None:
@@ -176,6 +178,9 @@ async def send_message(sid, data):
 
         recipient_id = chat.user1_id if chat.user2_id == sender_id else chat.user2_id
         recipient_info = connected_users.get(recipient_id)
+
+        sender_name = await get_user_name(sender_id)
+        title = sender_name if sender_name else "Новое сообщение"
 
         if recipient_info:
             recipient_sid = recipient_info.get('sid')
@@ -190,24 +195,24 @@ async def send_message(sid, data):
                     'media_urls': media_urls
                 }, room=recipient_sid
             )
-
-        sender_name = await get_user_name(sender_id)
-        if sender_name:
-            title = sender_name
-        else:
-            title = "Новое сообщение"
+            socketio_logger.info(f"Message ID {message_id} sent to recipient ID {recipient_id} via socket")
 
         push_token = await get_user_push_token(recipient_id)
         if push_token:
             if message_content is None:
                 logger.error("message_content is None, cannot send push notification.")
             else:
-                body = message_content
-                # logger.info(
-                #     f"Preparing to send push notification with token {push_token}, title {title}, and body {body}")
-                # response = await send_push_notification(push_token, title, body)
-                # logger.info(f"Push notification response: {response}")
-            await send_push_notification(push_token, title, body)
+                await send_push_notification(
+                    push_token,
+                    title,
+                    message_content,
+                    data={
+                        'message_type': message_type
+                    },
+                    aps={
+                        "content-available": 1
+                    })
+                socketio_logger.info(f"Push notification sent to recipient ID {recipient_id} with token {push_token}")
 
     await sio.emit(
         'completer', {
@@ -218,6 +223,9 @@ async def send_message(sid, data):
             'chat_id': chat_id
         }, room=sid
     )
+    socketio_logger.info(f"Completer event emitted for message ID {message_id}")
+
+
 
 
 @sio.event

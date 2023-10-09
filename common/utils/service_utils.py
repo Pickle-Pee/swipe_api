@@ -23,12 +23,14 @@ async def get_cities(query: str):
     return cities
 
 
-async def send_push_notification(token, title, body):
+async def send_push_notification(token, title, body, data, aps):
     url = "http://push_app:1026/send_push"
     payload = {
         "token": token,
         "title": title,
-        "body": body
+        "body": body,
+        "data": data,
+        "aps": aps
     }
 
     logger.info(f"Sending push notification: {json.dumps(payload, indent=2)}")
