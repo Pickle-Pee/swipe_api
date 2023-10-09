@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, Date, Boolean, ForeignKey, Text
+from sqlalchemy import Column, Integer, String, DateTime, Date, Boolean, ForeignKey, Text, Float
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from config import Base
@@ -27,6 +27,7 @@ class User(Base):
     tokens = relationship("PushTokens", back_populates="user", cascade="all, delete-orphan")
     messages = relationship("Message", back_populates="sender", lazy="dynamic")
     photos = relationship("UserPhoto", back_populates="user")
+    user_geolocation = relationship("UserGeolocation", back_populates="user", uselist=False)
 
 
 class PushTokens(Base):
@@ -57,3 +58,15 @@ class UserPhoto(Base):
 
         self.is_avatar = True
         session.commit()
+
+
+class UserGeolocation(Base):
+    __tablename__ = 'user_geolocation'
+
+    user_id = Column(Integer, ForeignKey('users.id'), primary_key=True)
+    latitude = Column(Float, nullable=False)
+    longitude = Column(Float, nullable=False)
+    created_at = Column(DateTime, default=datetime.now, nullable=False)
+    updated_at = Column(DateTime, default=datetime.now, nullable=False)
+
+    user = relationship("User", back_populates="user_geolocation")

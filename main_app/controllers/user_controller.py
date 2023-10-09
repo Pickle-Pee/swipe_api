@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from fastapi import HTTPException, APIRouter, Depends, status
 from fastapi.responses import Response
 from typing import List, Optional
@@ -6,9 +8,9 @@ from common.models.cities_models import City
 from common.models.interests_models import Interest, UserInterest
 from common.utils.crud import delete_user_and_related_data
 from config import SessionLocal, logger
-from common.models.user_models import User, PushTokens, UserPhoto
+from common.models.user_models import User, PushTokens, UserPhoto, UserGeolocation
 from common.schemas.user_schemas import UserDataResponse, AddTokenRequest, PersonalUserDataResponse, InterestResponse, \
-    UpdateUserRequest, UserPhotosResponse
+    UpdateUserRequest, UserPhotosResponse, AddGeolocationRequest
 from common.utils.auth_utils import get_token, get_user_id_from_token
 import traceback
 import requests
@@ -322,3 +324,38 @@ async def delete_photo(photo_id: int, access_token: str = Depends(get_token)):
             print("Exception:", e)
             db.rollback()
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
+
+
+@router.post("/add_geolocation", summary="Добавление или обновление геопозиции пользователя")
+def add_geolocation(request: AddGeolocationRequest, access_token: str = Depends(get_token)):
+    with SessionLocal() as db:
+        try:
+            user_id = get_user_id_from_token(access_token)
+            user = db.query(User).filter(User.id == user_id).first()
+
+            if not user:
+                raise HTTPException(status_code=404, detail="Пользователь не найден")
+
+            existing_geolocation = db.query(UserGeolocation).filter(UserGeolocation.user_id == user_id).first()
+
+            if existing_geolocation:
+                existing_geolocation.latitude = request.latitude
+                existing_geolocation.longitude = request.longitude
+                existing_geolocation.updated_at = datetime.now()
+                message = "Геопозиция обновлена"
+            else:
+                new_geolocation = UserGeolocation(
+                    user_id=user_id,
+                    latitude=request.latitude,
+                    longitude=request.longitude
+                )
+                db.add(new_geolocation)
+                message = "Геопозиция добавлена"
+
+            db.commit()
+            return {"message": message}
+
+        except Exception as e:
+            print("Exception:", e)
+            db.rollback()
+            raise HTTPException(status_code=500, detail="Internal server error")

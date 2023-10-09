@@ -125,3 +125,8 @@ class UserPhotoResponse(BaseModel):
 
 class UserPhotosResponse(BaseModel):
     photos: List[UserPhotoResponse]
+
+
+class AddGeolocationRequest(BaseModel):
+    latitude: float
+    longitude: float
