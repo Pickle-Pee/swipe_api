@@ -18,3 +18,4 @@ class UserInterest(Base):
     interest_id = Column(Integer, ForeignKey('interests.id'), nullable=False)
 
     user = relationship("User", back_populates="interests")
+    interest = relationship("Interest")

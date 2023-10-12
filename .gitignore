@@ -5,3 +5,4 @@ ecosystem.config.js
 .DS_Store
 __pycache__
 /common/utils/swipe-5da7e-firebase-adminsdk-uiosd-e4d43db1df.json
+/common/utils/best_model.pkl

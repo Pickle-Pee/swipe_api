@@ -112,9 +112,11 @@ def get_user(user_id: Optional[int] = None, access_token: str = Depends(get_toke
                 result = db.execute(sql_query, {'user_id': user_id}).fetchone()
                 match_percentage = int(result.match_percentage) if result else 0
 
-                user_interests = db.query(UserInterest).filter(UserInterest.user_id == user_id).all()
-                interests = [db.query(Interest).filter(Interest.id == ui.interest_id).first().interest_text for ui in
-                             user_interests]
+                interests_data = db.query(Interest.id, Interest.interest_text).join(
+                    UserInterest, UserInterest.interest_id == Interest.id
+                ).filter(UserInterest.user_id == user_id).all()
+
+                interests = [InterestResponse(interest_id=id, interest_text=text) for id, text in interests_data]
 
                 return {
                     "id": user.id,
