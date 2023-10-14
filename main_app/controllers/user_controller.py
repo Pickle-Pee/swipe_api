@@ -7,6 +7,7 @@ from sqlalchemy import text
 from common.models.cities_models import City
 from common.models.interests_models import Interest, UserInterest
 from common.utils.crud import delete_user_and_related_data
+from common.utils.match_utils import get_neural_network_match_percentage
 from config import SessionLocal, logger
 from common.models.user_models import User, PushTokens, UserPhoto, UserGeolocation
 from common.schemas.user_schemas import UserDataResponse, AddTokenRequest, PersonalUserDataResponse, InterestResponse, \
@@ -67,50 +68,10 @@ def get_user(user_id: Optional[int] = None, access_token: str = Depends(get_toke
                 user_id = get_user_id_from_token(access_token)
             user = db.query(User).filter(User.id == user_id).first()
             if user:
-                interests_list = [i.interest_text for i in db.query(Interest).all()]
-                cities_list = [c.city_name for c in db.query(City).all()]
+                current_user_id = get_user_id_from_token(access_token)
+                current_user = db.query(User).filter(User.id == current_user_id).first()
 
-                interests_str = ', '.join(["'%s'" % i for i in interests_list])
-                cities_str = ', '.join(["'%s'" % c for c in cities_list])
-
-                sql_query = text(f"""
-                    SELECT 
-                        users.id,
-                        users.first_name,
-                        users.last_name,
-                        users.date_of_birth,
-                        users.gender,
-                        users.city_id,
-                        users.verify,
-                        cities.city_name,
-                        ROUND(
-                            (SUM(
-                                CASE 
-                                    WHEN interests.interest_text IN ({interests_str}) THEN 3
-                                    ELSE 0
-                                END +
-                                CASE 
-                                    WHEN cities.city_name IN ({cities_str}) THEN 1
-                                    ELSE 0
-                                END
-                            ) / 49.0) * 100
-                        ) AS match_percentage
-                    FROM 
-                        users
-                    LEFT JOIN 
-                        user_interests ON users.id = user_interests.user_id
-                    LEFT JOIN 
-                        interests ON user_interests.interest_id = interests.id
-                    LEFT JOIN 
-                        cities ON users.city_id = cities.id
-                    WHERE 
-                        users.id = :user_id
-                    GROUP BY 
-                        users.id, users.first_name, users.last_name, cities.city_name;
-                                """)
-
-                result = db.execute(sql_query, {'user_id': user_id}).fetchone()
-                match_percentage = int(result.match_percentage) if result else 0
+                match_percentage = get_neural_network_match_percentage(current_user, user)
 
                 interests_data = db.query(Interest.id, Interest.interest_text).join(
                     UserInterest, UserInterest.interest_id == Interest.id
@@ -128,10 +89,11 @@ def get_user(user_id: Optional[int] = None, access_token: str = Depends(get_toke
                     "is_subscription": user.is_subscription,
                     "about_me": user.about_me,
                     "status": user.status,
-                    "city_name": result.city_name if result else None,
+                    "city_name": db.query(City.city_name).filter(
+                        City.id == user.city_id
+                        ).scalar() if user.city_id else None,
                     "interests": interests,
                     "match_percentage": match_percentage
-
                 }
             else:
                 raise HTTPException(status_code=404, detail="Пользователь не найден")
