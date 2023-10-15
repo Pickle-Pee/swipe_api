@@ -162,7 +162,7 @@ def add_token(request: AddTokenRequest, access_token: str = Depends(get_token)):
                 message = "Токен обновлен"
             else:
                 # Добавление нового токена
-                new_push_token = PushTokens(userid=user_id, token=request.token, active=True)
+                new_push_token = PushTokens(user_id=user_id, token=request.token, active=True)
                 db.add(new_push_token)
                 message = "Токен добавлен"
 

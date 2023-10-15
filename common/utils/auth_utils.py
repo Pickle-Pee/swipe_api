@@ -105,16 +105,22 @@ def send_text_message(user_id, first_name):
         print("Error sending text message:", response.status_code)
         print(response.text)
 
-def send_photos_to_bot(user_id, first_name, photos):
+def send_photos_to_bot(user_id, first_name, photo_paths):
     send_text_message(user_id, first_name)
     media = [
         {
             "type": "photo",
-            "media": f"attach://{photo.filename}"
+            "media": f"attach://{os.path.basename(photo_path)}"
         }
-        for photo in photos
+        for photo_path in photo_paths
     ]
-    files = [(photo.filename, (photo.filename, open(photo.filename, "rb"))) for photo in photos]
+    files = [(os.path.basename(photo_path), (os.path.basename(photo_path), open(photo_path, "rb"))) for photo_path in photo_paths]
+
+    for photo_path in photo_paths:
+        if os.path.exists(photo_path):
+            files.append((os.path.basename(photo_path), (os.path.basename(photo_path), open(photo_path, "rb"))))
+        else:
+            print(f"File {photo_path} does not exist.")
 
     data = {
         "chat_id": f"{VERIFY_CHAT_ID}",
@@ -122,6 +128,10 @@ def send_photos_to_bot(user_id, first_name, photos):
     }
 
     response = requests.post(VERIFY_CHAT_LINK, data=data, files=files)
+
+    for photo_path in photo_paths:
+        if os.path.exists(photo_path):
+            os.remove(photo_path)
 
     if response.status_code != 200:
         print("Error:", response.status_code)

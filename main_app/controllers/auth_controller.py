@@ -14,7 +14,7 @@ from common.models.user_models import User, VerificationQueue
 from common.models.error_models import ErrorResponse
 from common.schemas.auth_schemas import TokenResponse, CheckCodeResponse, VerificationResponse
 from common.schemas.user_schemas import UserCreate, UserIdResponse
-from config import SECRET_KEY
+from config import SECRET_KEY, logger
 from common.utils.auth_utils import create_refresh_token, create_access_token, validate_phone_number, get_token, \
     get_user_id_from_token, send_photos_to_bot
 import jwt
@@ -267,36 +267,88 @@ def who_am_i(access_token: str = Depends(get_token)):
 
 
 @router.post("/upload_verify_photos")
-async def upload_photos(access_token: str = Depends(get_token),
-                        profile_photo: UploadFile = File(...),
-                        verification_selfie: UploadFile = File(...)):
-    # Получаем информацию о пользователе из базы данных
+async def upload_verify_photos(
+        access_token: str = Depends(get_token),
+        profile_photo: UploadFile = File(...),
+        verification_selfie: UploadFile = File(...)):
+    logger.info("Received request to upload verification photos")
+
     with SessionLocal() as db:
         user_id = get_user_id_from_token(access_token)
         user = db.query(User).filter(User.id == user_id).first()
+
         if not user:
+            logger.error(f"User with id {user_id} not found")
             raise HTTPException(status_code=404, detail="User not found")
+
+        logger.info(f"User with id {user_id} found")
         first_name = user.first_name
+        db.commit()
 
-    # Сохраняем фотографии локально
-    photo_files = []
-    for photo in [profile_photo, verification_selfie]:
-        with open(photo.filename, "wb") as f:
-            f.write(photo.file.read())
-        photo_files.append(photo.filename)
+    photos = [profile_photo, verification_selfie]
+    photo_keys = []
 
-    # Отправляем фотографии и информацию о пользователе боту
-    send_photos_to_bot(user_id, first_name, photo_files)
+    for index, photo in enumerate(photos):
+        mime = magic.Magic(mime=True)
+        mime_type = mime.from_buffer(photo.file.read(1024))
+        photo.file.seek(0)  # reset the file cursor to the beginning
 
-    # Добавляем запись в таблицу verification_queue
+        # Map MIME types to file extensions
+        mime_to_ext = {
+            "image/jpeg": "jpg",
+            "image/png": "png",
+            "image/gif": "gif",
+            "image/bmp": "bmp",
+            "image/tiff": "tiff",
+            "image/webp": "webp",
+            "image/heic": "heic",
+            "image/heif": "heif",
+        }
+
+        extension = mime_to_ext.get(mime_type)
+        if extension is None:
+            logger.error(f"Unsupported file type {mime_type}")
+            raise HTTPException(status_code=400, detail="Unsupported file type")
+
+        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+        file_name = f"verification_{user_id}_{timestamp}_{index}.{extension}"
+
+        logger.info(f"Uploading file {file_name}")
+
+        try:
+            # Always write the file to the buffer before uploading to S3
+            with open(file_name, "wb") as buffer:
+                buffer.write(photo.file.read())
+
+            # Upload the file to S3
+            with open(file_name, "rb") as f:
+                s3_client.upload_fileobj(f, BUCKET_VERIFY_IMAGES, file_name)
+
+            photo_keys.append(file_name)
+            logger.info(f"File {file_name} uploaded successfully to S3")
+        except Exception as e:
+            logger.error(f"Failed to upload file {file_name} to S3: {e}")
+            raise HTTPException(status_code=500, detail="Failed to upload file")
+
+        logger.info(f"Photo keys: {photo_keys}")
+
+    send_photos_to_bot(user_id, first_name, photo_keys)
+
+    # Clean up the local files
+    for file_name in photo_keys:
+        if os.path.exists(file_name):
+            os.remove(file_name)
+            logger.info(f"Local file {file_name} removed")
+
     with SessionLocal() as db:
+        photo_urls = [f"/service/get_file/{key}" for key in photo_keys]
         verification_record = VerificationQueue(
             user_id=user_id,
-            photo1=photo_files[0],
-            photo2=photo_files[1],
+            photo1=photo_urls[0],
+            photo2=photo_urls[1],
             status='pending'
         )
         db.add(verification_record)
         db.commit()
 
-    return {"status": "photos received and sent to bot"}
+    return {"status": "photos received, uploaded to Yandex Cloud, and sent to bot"}
