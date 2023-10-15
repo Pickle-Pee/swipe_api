@@ -6,10 +6,12 @@ import magic
 from datetime import datetime
 from typing import Optional, List, Union
 from fastapi import UploadFile, File, APIRouter, Depends, HTTPException, status
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, JSONResponse
 
 from common.models.cities_models import City, Region
-from common.models.user_models import User, UserPhoto
+from common.models.user_models import User, UserPhoto, VerificationQueue
+from common.schemas.service_schemas import VerificationUpdate, VerificationStatus
+from common.utils.service_utils import verify_token
 from config import s3_client, BUCKET_MESSAGE_IMAGES, BUCKET_MESSAGE_VOICES, BUCKET_PROFILE_IMAGES, SessionLocal, logger
 from common.utils.auth_utils import get_user_id_from_token, get_token
 
@@ -255,3 +257,31 @@ async def get_cities(query: str):
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Ошибка при запросе к базе данных")
+
+
+@router.put("/verify/{user_id}")
+def update_verification_status(
+        user_id: int,
+        verification_update: VerificationUpdate,
+        _: str = Depends(verify_token)) -> JSONResponse:
+    with SessionLocal() as db:
+        verification_record = db.query(VerificationQueue).filter(VerificationQueue.user_id == user_id).first()
+        if not verification_record:
+            raise HTTPException(status_code=404, detail="Verification record not found")
+
+        verification_record.status = verification_update.status.value
+        db.commit()
+
+        user = db.query(User).filter(User.id == user_id).first()
+        if verification_update.status == VerificationStatus.approved:
+            user.is_verified = True
+        else:
+            user.is_verified = False
+        db.commit()
+
+    return JSONResponse(
+        content={
+            "status": "success",
+            "message": f"Verification status updated to {verification_update.status.value}"
+        }
+    )

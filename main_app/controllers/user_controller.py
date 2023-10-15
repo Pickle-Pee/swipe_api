@@ -323,3 +323,17 @@ def add_geolocation(request: AddGeolocationRequest, access_token: str = Depends(
             print("Exception:", e)
             db.rollback()
             raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@router.get("/verify/check_verify", summary="Получение информации о верификации")
+async def get_current_user(access_token: str = Depends(get_token)):
+    with SessionLocal() as db:
+        user_id = get_user_id_from_token(access_token)
+        user = db.query(User).filter(User.id == user_id).one_or_none()
+
+        if user is None:
+            raise HTTPException(status_code=404, detail="Пользователь не найден")
+
+        return {
+            "verify": user.verify
+        }

@@ -1,8 +1,12 @@
 import os
 
+import requests
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackQueryHandler
 import logging
+
+from config import TG_VERIFY_KEY
+
 # Импортируйте любые дополнительные библиотеки или модули, необходимые для взаимодействия с вашей базой данных или API
 
 # Настройка логгирования
@@ -12,7 +16,7 @@ logging.basicConfig(
     )
 
 # Токен вашего бота
-TOKEN = 'YOUR_TOKEN_HERE'
+TOKEN = '6348194039:AAERHzbt_uVCJrhc9la-ZeAe0aXQUnEMwp8'
 
 
 def start(update, context):
@@ -42,12 +46,24 @@ def photo(update, context):
 
 def button(update, context):
     query = update.callback_query
+    user_id = update.message.from_user.id
 
-    # Обновите флаг верификации в вашей базе данных в соответствии с выбором администратора
-    # PSEUDOCODE: Обновите статус верификации в базе данных
-    # response = requests.patch(YOUR_API_ENDPOINT, data={"user_id": user_id, "verification_status": query.data})
+    # Подготовьте данные для отправки на ваш API
+    verification_status = "approved" if query.data == 'true' else "denied"
+    data = {
+        "status": verification_status
+    }
 
-    query.edit_message_text(text=f"Выбрано: {query.data}")
+    api_url = f"http://main_app:1024/verify/{user_id}"
+
+    # Отправьте запрос на ваш API
+    response = requests.put(api_url, json=data, headers={"Authorization": f"Bearer {TG_VERIFY_KEY}"})
+
+    if response.status_code == 200:
+        query.edit_message_text(text=f"Выбрано: {query.data}")
+    else:
+        query.edit_message_text(text="Произошла ошибка при обновлении статуса верификации.")
+
 
 
 def main():

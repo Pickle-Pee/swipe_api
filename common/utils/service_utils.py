@@ -1,9 +1,12 @@
 import json
 
-from fastapi import HTTPException
-from config import DADATA_API_URL, DADATA_API_TOKEN, logger
+from fastapi import HTTPException, Depends, security, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+
+from config import DADATA_API_URL, DADATA_API_TOKEN, logger, TG_VERIFY_KEY
 import httpx
 
+security = HTTPBearer()
 
 async def get_cities(query: str):
     headers = {
@@ -45,3 +48,12 @@ async def send_push_notification(token, title, body, data, aps):
             return None
 
         return response.json()
+
+
+def verify_token(authorization: HTTPAuthorizationCredentials = Depends(security)):
+    token = authorization.credentials
+    if token != f"{TG_VERIFY_KEY}":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token",
+        )
