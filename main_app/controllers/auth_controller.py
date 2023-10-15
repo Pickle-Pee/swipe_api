@@ -1,19 +1,25 @@
+import os
 import traceback
+from datetime import datetime
 
-from fastapi import HTTPException, status, APIRouter, Depends
+import magic
+
+from fastapi import HTTPException, status, APIRouter, Depends, UploadFile, File
 from fastapi.responses import JSONResponse
 from sqlalchemy import func
 
 from common.models.auth_models import TemporaryCode, RefreshToken
 from common.models.cities_models import City, Region
-from common.models.user_models import User
+from common.models.user_models import User, VerificationQueue
 from common.models.error_models import ErrorResponse
 from common.schemas.auth_schemas import TokenResponse, CheckCodeResponse, VerificationResponse
 from common.schemas.user_schemas import UserCreate, UserIdResponse
-from config import SessionLocal, SECRET_KEY
+from config import SECRET_KEY
 from common.utils.auth_utils import create_refresh_token, create_access_token, validate_phone_number, get_token, \
-    get_user_id_from_token
+    get_user_id_from_token, send_photos_to_bot
 import jwt
+from config import s3_client, SessionLocal, BUCKET_VERIFY_IMAGES
+
 
 router = APIRouter(prefix="/auth", tags=["Auth Controller"])
 
@@ -257,3 +263,40 @@ def who_am_i(access_token: str = Depends(get_token)):
             return user
         else:
             raise HTTPException(status_code=404, detail="Пользователь не найден")
+
+
+
+@router.post("/upload_verify_photos")
+async def upload_photos(access_token: str = Depends(get_token),
+                        profile_photo: UploadFile = File(...),
+                        verification_selfie: UploadFile = File(...)):
+    # Получаем информацию о пользователе из базы данных
+    with SessionLocal() as db:
+        user_id = get_user_id_from_token(access_token)
+        user = db.query(User).filter(User.id == user_id).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        first_name = user.first_name
+
+    # Сохраняем фотографии локально
+    photo_files = []
+    for photo in [profile_photo, verification_selfie]:
+        with open(photo.filename, "wb") as f:
+            f.write(photo.file.read())
+        photo_files.append(photo.filename)
+
+    # Отправляем фотографии и информацию о пользователе боту
+    send_photos_to_bot(user_id, first_name, photo_files)
+
+    # Добавляем запись в таблицу verification_queue
+    with SessionLocal() as db:
+        verification_record = VerificationQueue(
+            user_id=user_id,
+            photo1=photo_files[0],
+            photo2=photo_files[1],
+            status='pending'
+        )
+        db.add(verification_record)
+        db.commit()
+
+    return {"status": "photos received and sent to bot"}

@@ -1,7 +1,7 @@
 import json
 
 from fastapi import HTTPException
-from config import DADATA_API_URL, DADATA_API_TOKEN, DADATA_API_SECRET, logger
+from config import DADATA_API_URL, DADATA_API_TOKEN, logger
 import httpx
 
 

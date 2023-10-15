@@ -1,10 +1,13 @@
+import json
+import os
+
 import requests
 from fastapi import HTTPException, Header
 from datetime import datetime, timedelta
-from config import SECRET_KEY, ACCESS_TOKEN_EXPIRE_MINUTES, REFRESH_TOKEN_EXPIRE_HOURS
+from config import SECRET_KEY, ACCESS_TOKEN_EXPIRE_MINUTES, REFRESH_TOKEN_EXPIRE_HOURS, VERIFY_SEND_TEXT
 import re
 import jwt
-
+from config import VERIFY_CHAT_ID, VERIFY_CHAT_LINK
 
 def create_jwt_token(data: dict):
     return jwt.encode(data, SECRET_KEY, algorithm="HS256")
@@ -90,3 +93,38 @@ def send_sms(phone_number: str, text: str, api_key: str):
     else:
         print("Failed to send SMS:", response.status_code, response.text)
         return None
+
+
+def send_text_message(user_id, first_name):
+    data = {
+        "chat_id": f"{VERIFY_CHAT_ID}",
+        "text": f"Пользователь: {user_id}\nИмя: {first_name}",
+    }
+    response = requests.post(VERIFY_SEND_TEXT, data=data)
+    if response.status_code != 200:
+        print("Error sending text message:", response.status_code)
+        print(response.text)
+
+def send_photos_to_bot(user_id, first_name, photos):
+    send_text_message(user_id, first_name)
+    media = [
+        {
+            "type": "photo",
+            "media": f"attach://{photo.filename}"
+        }
+        for photo in photos
+    ]
+    files = [(photo.filename, (photo.filename, open(photo.filename, "rb"))) for photo in photos]
+
+    data = {
+        "chat_id": f"{VERIFY_CHAT_ID}",
+        "media": json.dumps(media),
+    }
+
+    response = requests.post(VERIFY_CHAT_LINK, data=data, files=files)
+
+    if response.status_code != 200:
+        print("Error:", response.status_code)
+        print(response.text)
+
+    return response.json()

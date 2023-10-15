@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, Date, Boolean, ForeignKey, Text, Float
+from sqlalchemy import Column, Integer, String, DateTime, Date, Boolean, ForeignKey, Text, Float, func
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from config import Base
@@ -70,3 +70,17 @@ class UserGeolocation(Base):
     updated_at = Column(DateTime, default=datetime.now, nullable=False)
 
     user = relationship("User", back_populates="user_geolocation")
+
+
+class VerificationQueue(Base):
+    __tablename__ = 'verification_queue'
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
+    photo1 = Column(String, nullable=False)
+    photo2 = Column(String, nullable=False)
+    status = Column(String, default='pending', nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    # user = relationship("User", back_populates="verification")

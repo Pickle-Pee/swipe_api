@@ -5,15 +5,11 @@ import traceback
 import magic
 from datetime import datetime
 from typing import Optional, List, Union
-
-import requests
-from dadata import Dadata
 from fastapi import UploadFile, File, APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
 
 from common.models.cities_models import City, Region
 from common.models.user_models import User, UserPhoto
-from config import DADATA_API_TOKEN, DADATA_API_SECRET
 from config import s3_client, BUCKET_MESSAGE_IMAGES, BUCKET_MESSAGE_VOICES, BUCKET_PROFILE_IMAGES, SessionLocal, logger
 from common.utils.auth_utils import get_user_id_from_token, get_token
 
