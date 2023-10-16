@@ -1,19 +1,31 @@
 from datetime import date, datetime
-from pydantic import BaseModel, field_validator
-from typing import Optional, List, Tuple
+from pydantic import BaseModel, Field, validator
+from typing import Optional, List, Literal
+from sqlalchemy import Enum
+
+# class VerificationStatus(str, Enum):
+#     denied = "denied"
+#     approved = "approved"
+#     in_progress = "in_progress"
+#
+#     def __str__(self):
+#         return str(self.value)
 
 
 class UserCreate(BaseModel):
+    class Config:
+        arbitrary_types_allowed = True
+
     phone_number: str
     first_name: str
     last_name: str
     date_of_birth: date
     gender: str
-    verify: bool = False
+    verify: Literal["denied", "approved", "in_progress"] = Field(default="in_progress")
     city_name: str
     status: str = "offline"
 
-    @field_validator("phone_number")
+    @validator("phone_number")
     def validate_phone_number(cls, value):
         if not value.isdigit():
             raise ValueError("Phone number must consist only of digits")
@@ -32,10 +44,8 @@ class UserResponse(UserCreate):
 
 class UserIdResponse(BaseModel):
     id: int
-    verify: bool
     created_at: datetime
     updated_at: datetime
-
 
 class InterestResponse(BaseModel):
     interest_id: int
@@ -48,7 +58,6 @@ class UserDataResponse(BaseModel):
     last_name: Optional[str] = None
     date_of_birth: Optional[date] = None
     gender: Optional[str] = None
-    verify: bool
     is_subscription: bool
     city_name: Optional[str] = None
     is_favorite: Optional[bool] = False
@@ -65,7 +74,6 @@ class PersonalUserDataResponse(BaseModel):
     last_name: Optional[str] = None
     date_of_birth: Optional[date] = None
     gender: Optional[str] = None
-    verify: bool
     is_subscription: bool
     city_name: Optional[str] = None
     about_me: Optional[str] = None

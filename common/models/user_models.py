@@ -1,7 +1,14 @@
-from sqlalchemy import Column, Integer, String, DateTime, Date, Boolean, ForeignKey, Text, Float, func
+
+from sqlalchemy import Column, Integer, String, DateTime, Date, Boolean, ForeignKey, Text, Float, func, Enum
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from config import Base
+
+
+class VerificationStatus(str, Enum):
+    denied = "denied"
+    approved = "approved"
+    in_progress = "in_progress"
 
 
 class User(Base):
@@ -13,7 +20,7 @@ class User(Base):
     last_name = Column(String)
     date_of_birth = Column(Date)
     gender = Column(String)
-    verify = Column(Boolean)
+    verify = Column(String, default=str(VerificationStatus.in_progress))
     is_subscription = Column(Boolean)
     city_id = Column(Integer, ForeignKey('cities.id'))
     about_me = Column(Text)
@@ -28,6 +35,7 @@ class User(Base):
     messages = relationship("Message", back_populates="sender", lazy="dynamic")
     photos = relationship("UserPhoto", back_populates="user")
     user_geolocation = relationship("UserGeolocation", back_populates="user", uselist=False)
+    verification = relationship('VerificationQueue', back_populates='user')
 
 
 class PushTokens(Base):
@@ -83,4 +91,4 @@ class VerificationQueue(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
-    # user = relationship("User", back_populates="verification")
+    user = relationship("User", back_populates="verification")

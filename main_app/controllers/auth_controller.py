@@ -46,8 +46,7 @@ def get_refreshed_token(refresh_token: str):
 
             new_token_data = {
                 "sub": phone_number,
-                "user_id": user.id,
-                "verify": user.verify
+                "user_id": user.id
             }
             new_access_token = create_access_token(new_token_data)
 
@@ -166,7 +165,6 @@ def register(user_data: UserCreate):
                 last_name=user_data.last_name,
                 date_of_birth=user_data.date_of_birth,
                 gender=user_data.gender,
-                verify=user_data.verify,
                 city_id=city_id,
                 is_subscription=False
             )

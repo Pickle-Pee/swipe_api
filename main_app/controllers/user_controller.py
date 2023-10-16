@@ -50,13 +50,12 @@ async def get_current_user(access_token: str = Depends(get_token)):
             "last_name": user.last_name,
             "date_of_birth": user.date_of_birth,
             "gender": user.gender,
-            "verify": user.verify,
             "is_subscription": user.is_subscription,
             "city_name": city_name,
             "interests": interests if interests else None,
             "about_me": user.about_me,
             "status": user.status,
-            "avatar_url": avatar_url  # Эта строка теперь получает URL аватара из новой таблицы
+            "avatar_url": avatar_url
         }
 
 
@@ -85,7 +84,6 @@ def get_user(user_id: Optional[int] = None, access_token: str = Depends(get_toke
                     "last_name": user.last_name if user.last_name else None,
                     "date_of_birth": user.date_of_birth if user.date_of_birth else None,
                     "gender": user.gender if user.gender else None,
-                    "verify": user.verify,
                     "is_subscription": user.is_subscription,
                     "about_me": user.about_me,
                     "status": user.status,
@@ -116,7 +114,6 @@ def get_all_users():
                     "last_name": user.last_name,
                     "date_of_birth": user.date_of_birth,
                     "gender": user.gender,
-                    "verify": user.verify,
                     "is_subscription": user.is_subscription
                 }
                 for user in users
