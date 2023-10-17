@@ -6,6 +6,7 @@ import magic
 
 from fastapi import HTTPException, status, APIRouter, Depends, UploadFile, File
 from fastapi.responses import JSONResponse
+from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy import func
 
 from common.models.auth_models import TemporaryCode, RefreshToken
@@ -14,6 +15,7 @@ from common.models.user_models import User, VerificationQueue
 from common.models.error_models import ErrorResponse
 from common.schemas.auth_schemas import TokenResponse, CheckCodeResponse, VerificationResponse
 from common.schemas.user_schemas import UserCreate, UserIdResponse
+from common.utils.service_utils import verify_token
 from config import SECRET_KEY, logger
 from common.utils.auth_utils import create_refresh_token, create_access_token, validate_phone_number, get_token, \
     get_user_id_from_token, send_photos_to_bot
@@ -350,3 +352,31 @@ async def upload_verify_photos(
         db.commit()
 
     return {"status": "photos received, uploaded to Yandex Cloud, and sent to bot"}
+
+
+@router.post('/set_verify/{user_id}')
+def verify_user_in_bot(user_id: int, status: str, authorization: HTTPAuthorizationCredentials = Depends(verify_token)):
+    with SessionLocal() as db:
+        verification = db.query(VerificationQueue).filter(VerificationQueue.user_id == user_id).first()
+
+        if not verification:
+            raise HTTPException(status_code=404, detail="User not found in verification queue")
+
+        verification.status = status
+        db.commit()
+
+        user = db.query(User).filter(User.id == user_id).first()
+
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        if status == "approved":
+            user.verify = "access"
+        elif status == "denied":
+            user.verify = "denied"
+        else:
+            raise HTTPException(status_code=400, detail="Invalid status")
+
+        db.commit()
+
+        return {"status": "success"}

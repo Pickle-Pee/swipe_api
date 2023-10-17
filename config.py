@@ -35,6 +35,7 @@ VERIFY_CHAT_LINK=os.getenv("VERIFY_CHAT_LINK")
 VERIFY_CHAT_ID=os.getenv("VERIFY_CHAT_ID")
 VERIFY_SEND_TEXT=os.getenv("VERIFY_SEND_TEXT")
 TG_VERIFY_KEY=os.getenv("TG_VERIFY_KEY")
+TG_VERIFY_BOT_TOKEN=os.getenv("TG_VERIFY_BOT_TOKEN")
 
 # Logging configuration
 

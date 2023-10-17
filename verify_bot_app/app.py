@@ -1,85 +1,53 @@
-import os
-
 import requests
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
-from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackQueryHandler
+from telegram import InlineKeyboardMarkup, InlineKeyboardButton, Update
+from telegram.ext import Updater, MessageHandler, CallbackQueryHandler, Filters, CallbackContext
 import logging
+from config import TG_VERIFY_KEY, TG_VERIFY_BOT_TOKEN
 
-from config import TG_VERIFY_KEY
 
-# Импортируйте любые дополнительные библиотеки или модули, необходимые для взаимодействия с вашей базой данных или API
-
-# Настройка логгирования
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     level=logging.INFO
     )
 
-# Токен вашего бота
-TOKEN = '6348194039:AAERHzbt_uVCJrhc9la-ZeAe0aXQUnEMwp8'
-
-
-def start(update, context):
-    update.message.reply_text('Пожалуйста, отправьте фото для профиля и селфи для верификации.')
-
-
-def photo(update, context):
+def handle_message(update: Update, context: CallbackContext) -> None:
     user_id = update.message.from_user.id
     first_name = update.message.from_user.first_name
 
-    # Сохраните фотографии, и передайте их вместе с user_id и first_name на ваше API
+    logging.info("Message from %s (ID: %s) received", first_name, user_id)
 
-    # PSEUDOCODE: Передайте фото и информацию о пользователе на ваше API
-    # response = requests.post(YOUR_API_ENDPOINT, data={"user_id": user_id, "first_name": first_name, "photos": photos})
+    if update.message.photo:
+        keyboard = InlineKeyboardMarkup([
+                    [InlineKeyboardButton("Подтвердить", callback_data='approve'),
+                     InlineKeyboardButton("Отклонить", callback_data='deny')]
+                ])
+        update.message.reply_text('Выберите действие:', reply_markup=keyboard)
 
-    keyboard = [
-        [
-            InlineKeyboardButton("Подтвердить", callback_data='true'),
-            InlineKeyboardButton("Отклонить", callback_data='false')
-        ]
-    ]
-
-    reply_markup = InlineKeyboardMarkup(keyboard)
-
-    update.message.reply_text('Выберите действие:', reply_markup=reply_markup)
-
-
-def button(update, context):
+def handle_button(update: Update, context: CallbackContext) -> None:
     query = update.callback_query
-    user_id = update.message.from_user.id
+    query.answer()
 
-    # Подготовьте данные для отправки на ваш API
-    verification_status = "approved" if query.data == 'true' else "denied"
-    data = {
-        "status": verification_status
-    }
+    user_response = query.data
 
-    api_url = f"http://main_app:1024/verify/{user_id}"
+    user_id = update.callback_query.from_user.id
 
-    # Отправьте запрос на ваш API
-    response = requests.put(api_url, json=data, headers={"Authorization": f"Bearer {TG_VERIFY_KEY}"})
+    status = 'approved' if user_response == 'approve' else 'denied'
+    api_url = f"http://main_app:1024/set_verify/{user_id}"
+    headers = {"Authorization": f"Bearer {TG_VERIFY_KEY}"}
 
-    if response.status_code == 200:
-        query.edit_message_text(text=f"Выбрано: {query.data}")
-    else:
-        query.edit_message_text(text="Произошла ошибка при обновлении статуса верификации.")
-
+    requests.post(api_url, json={"status": status}, headers=headers)
+    query.edit_message_text(f"Статус обновлен: {status}")
 
 
 def main():
-    updater = Updater(token=TOKEN, use_context=True)
+    updater = Updater(TG_VERIFY_BOT_TOKEN, use_context=True)
     dp = updater.dispatcher
 
-    dp.add_handler(CommandHandler('start', start))
-    dp.add_handler(MessageHandler(Filters.photo, photo))
-    dp.add_handler(CallbackQueryHandler(button))
+    dp.add_handler(MessageHandler(Filters.photo & ~Filters.command, handle_message))
+    dp.add_handler(CallbackQueryHandler(handle_button))
 
     updater.start_polling()
     updater.idle()
 
-
 if __name__ == "__main__":
-    import uvicorn
-
-    app_host = os.getenv("MAIN_APP_HOST")
-    uvicorn.run(host=app_host, port=1027)
+    main()
