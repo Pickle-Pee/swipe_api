@@ -43,21 +43,6 @@ services:
     env_file:
       - .env
 
-  verify_bot_app:
-    build: ./verify_bot_app
-    ports:
-      - "1027:1027"
-    environment:
-      - PYTHONPATH=/app
-    volumes:
-      - ./common:/app/common
-      - ./config.py:/app/config.py
-      - /root/swipe_api/common/utils:/app/common/utils
-    networks:
-      - swipe_network
-    env_file:
-      - .env
-
 networks:
   swipe_network:
     driver: bridge

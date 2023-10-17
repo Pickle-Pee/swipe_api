@@ -12,7 +12,8 @@ from common.models.cities_models import City, Region
 from common.models.user_models import User, UserPhoto, VerificationQueue
 from common.schemas.service_schemas import VerificationUpdate, VerificationStatus
 from common.utils.service_utils import verify_token
-from config import s3_client, BUCKET_MESSAGE_IMAGES, BUCKET_MESSAGE_VOICES, BUCKET_PROFILE_IMAGES, SessionLocal, logger
+from config import s3_client, BUCKET_MESSAGE_IMAGES, BUCKET_MESSAGE_VOICES, BUCKET_PROFILE_IMAGES, SessionLocal, logger, \
+    sio
 from common.utils.auth_utils import get_user_id_from_token, get_token
 
 router = APIRouter(prefix="/service", tags=["Auth Controller"])
@@ -260,24 +261,46 @@ async def get_cities(query: str):
 
 
 @router.put("/verify/{user_id}")
-def update_verification_status(
+async def update_verification_status(
         user_id: int,
-        verification_update: VerificationUpdate,
-        _: str = Depends(verify_token)) -> JSONResponse:
+        verification_update: VerificationUpdate) -> JSONResponse:
     with SessionLocal() as db:
-        verification_record = db.query(VerificationQueue).filter(VerificationQueue.user_id == user_id).first()
-        if not verification_record:
-            raise HTTPException(status_code=404, detail="Verification record not found")
+        verification = db.query(VerificationQueue).filter(VerificationQueue.user_id == user_id).first()
 
-        verification_record.status = verification_update.status.value
+        if not verification:
+            raise HTTPException(status_code=404, detail="User not found in verification queue")
+
+        verification.status = verification_update.status.value
         db.commit()
 
         user = db.query(User).filter(User.id == user_id).first()
+
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+
         if verification_update.status == VerificationStatus.approved:
+            user.verify = "approved"
             user.is_verified = True
-        else:
+        elif verification_update.status == VerificationStatus.denied:
+            user.verify = "denied"
             user.is_verified = False
+        else:
+            raise HTTPException(status_code=400, detail="Invalid status")
+
         db.commit()
+
+        print(f"Sending event to socket: {verification_update.status.value}")
+
+        # Добавьте try-except для отлавливания возможных ошибок
+        try:
+            await sio.emit(
+                'update_verification_status', {
+                    'status': verification_update.status.value
+                }
+            )
+        except Exception as e:
+            print(f"Error sending event to socket: {e}")
+            raise HTTPException(status_code=500, detail=str(e))
 
     return JSONResponse(
         content={

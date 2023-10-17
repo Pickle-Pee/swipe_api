@@ -352,31 +352,3 @@ async def upload_verify_photos(
         db.commit()
 
     return {"status": "photos received, uploaded to Yandex Cloud, and sent to bot"}
-
-
-@router.post('/set_verify/{user_id}')
-def verify_user_in_bot(user_id: int, status: str, authorization: HTTPAuthorizationCredentials = Depends(verify_token)):
-    with SessionLocal() as db:
-        verification = db.query(VerificationQueue).filter(VerificationQueue.user_id == user_id).first()
-
-        if not verification:
-            raise HTTPException(status_code=404, detail="User not found in verification queue")
-
-        verification.status = status
-        db.commit()
-
-        user = db.query(User).filter(User.id == user_id).first()
-
-        if not user:
-            raise HTTPException(status_code=404, detail="User not found")
-
-        if status == "approved":
-            user.verify = "access"
-        elif status == "denied":
-            user.verify = "denied"
-        else:
-            raise HTTPException(status_code=400, detail="Invalid status")
-
-        db.commit()
-
-        return {"status": "success"}

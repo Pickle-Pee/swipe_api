@@ -7,7 +7,7 @@ from datetime import datetime
 from common.utils.auth_utils import get_user_id_from_token
 from common.utils.service_utils import send_push_notification
 from common.utils.user_utils import get_user_push_token, get_user_name
-from config import SessionLocal, logger, engine, socketio_logger
+from config import SessionLocal, logger, engine, socketio_logger, sio, socket_app
 from urllib.parse import parse_qs
 
 from common.models.auth_models import *
@@ -17,10 +17,6 @@ from common.models.cities_models import *
 from common.models.likes_models import *
 from common.models.communication_models import *
 from common.models.error_models import *
-
-
-sio = socketio.AsyncServer(async_mode='asgi', cors_allowed_origins="*", logger=True, engineio_logger=True)
-socket_app = socketio.ASGIApp(sio)
 
 connected_users = {}
 
@@ -443,6 +439,51 @@ async def delete_chat(sid, data):
             if recipient_info:
                 await sio.emit(
                     'delete_chat', {'chat_id': chat_id}, room=recipient_info['sid'])
+
+
+@sio.event
+async def update_verification_status(sid, data):
+    print(f"Received event data: {data}")  # Log received data
+
+    if isinstance(data, str):
+        data = json.loads(data)
+
+    user_id = data.get('user_id')
+    status = data.get('status')
+
+    if not user_id or not status:
+        print("User ID or status is missing in the received data")  # Log error
+        await sio.emit('error', {'error': 'Missing data'}, room=sid)
+        return
+
+    print(f"Processing for User ID: {user_id}, Status: {status}")  # Log processing status
+
+    user_info = next((info for info in connected_users.values() if info['user_id'] == user_id), None)
+
+    if not user_info:
+        print(f"No user info found for User ID: {user_id}")  # Log error
+        await sio.emit('error', {'error': 'User not found'}, room=sid)
+        return
+
+    with SessionLocal() as db:
+        user = db.query(User).filter(User.id == user_id).first()
+        if not user:
+            print(f"User not found in DB for User ID: {user_id}")  # Log error
+            await sio.emit('error', {'error': 'User not found in DB'}, room=sid)
+            return
+
+        user.is_verified = status == 'approved'
+        db.commit()
+
+        print(f"User verification status updated for User ID: {user_id}")  # Log success
+
+        await sio.emit(
+            'verification_update', {
+                'status': status
+            }, room=user_info['sid']
+        )
+
+    print(f"Event emitted for User ID: {user_id}, Status: {status}")
 
 
 @sio.event

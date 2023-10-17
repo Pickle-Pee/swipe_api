@@ -1,3 +1,4 @@
+import socketio
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy import create_engine
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
@@ -64,6 +65,9 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 AsyncSessionLocal = sessionmaker(bind=asyncEngine, class_=AsyncSession, expire_on_commit=False,)
 
 Base = declarative_base()
+
+sio = socketio.AsyncServer(async_mode='asgi', cors_allowed_origins="*", logger=True, engineio_logger=True)
+socket_app = socketio.ASGIApp(sio)
 
 s3_client = boto3.client(
     's3',
