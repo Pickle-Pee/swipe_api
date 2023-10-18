@@ -1,6 +1,7 @@
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
+from common.models.admin_models import Admin
 from common.models.auth_models import RefreshToken
 from common.models.communication_models import Chat, Message, Media
 from common.models.interests_models import UserInterest
@@ -56,3 +57,7 @@ def delete_message_and_related_media(db: Session, message_id: int):
         return True
 
     return False
+
+
+def get_admin_by_username(db: Session, username: str):
+    return db.query(Admin).filter(Admin.username == username).first()
