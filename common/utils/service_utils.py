@@ -2,11 +2,13 @@ import json
 
 from fastapi import HTTPException, Depends, security, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from socketio import AsyncClient
 
 from config import DADATA_API_URL, DADATA_API_TOKEN, logger, TG_VERIFY_KEY
 import httpx
 
 security = HTTPBearer()
+sio_client = AsyncClient()
 
 async def get_cities(query: str):
     headers = {
@@ -55,5 +57,15 @@ def verify_token(authorization: HTTPAuthorizationCredentials = Depends(security)
     if token != f"{TG_VERIFY_KEY}":
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid token",
-        )
+            detail="Invalid token")
+
+
+
+async def send_event_to_socketio(url, event_name, event_data):
+    try:
+        headers = {'no-auth': 'true'}
+        await sio_client.connect(url, headers=headers)
+        await sio_client.emit(event_name, event_data)
+        await sio_client.disconnect()
+    except Exception as e:
+        logger.error(f"Error sending event to Socket.IO server: {e}")

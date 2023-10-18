@@ -32,6 +32,10 @@ async def connect(sid, environ):
     parsed_params = parse_qs(query_string)
     access_token = parsed_params.get('token', [None])[0]
 
+    if 'no-auth' in environ.get('QUERY_STRING', ''):
+        print('This event does not require authentication')
+        return True
+
     if not access_token:
         return False
 
@@ -443,7 +447,8 @@ async def delete_chat(sid, data):
 
 @sio.event
 async def update_verification_status(sid, data):
-    print(f"Received event data: {data}")  # Log received data
+    logger.info(f"Received event data: {data}")
+
 
     if isinstance(data, str):
         data = json.loads(data)
@@ -451,39 +456,39 @@ async def update_verification_status(sid, data):
     user_id = data.get('user_id')
     status = data.get('status')
 
+    user_sid = connected_users.get(user_id)
+
+    if user_sid:
+        await sio.emit('verification_update', {'status': status}, room=user_sid)
+    else:
+        print(f"User with ID {user_id} is not connected.")
+
     if not user_id or not status:
-        print("User ID or status is missing in the received data")  # Log error
+        logger.error("Missing data")
         await sio.emit('error', {'error': 'Missing data'}, room=sid)
         return
-
-    print(f"Processing for User ID: {user_id}, Status: {status}")  # Log processing status
 
     user_info = next((info for info in connected_users.values() if info['user_id'] == user_id), None)
 
     if not user_info:
-        print(f"No user info found for User ID: {user_id}")  # Log error
+        logger.error("User not found")
         await sio.emit('error', {'error': 'User not found'}, room=sid)
         return
 
     with SessionLocal() as db:
         user = db.query(User).filter(User.id == user_id).first()
         if not user:
-            print(f"User not found in DB for User ID: {user_id}")  # Log error
+            logger.error("User not found in DB")
             await sio.emit('error', {'error': 'User not found in DB'}, room=sid)
             return
 
         user.is_verified = status == 'approved'
         db.commit()
 
-        print(f"User verification status updated for User ID: {user_id}")  # Log success
+        logger.info(f"Emitting verification_update with status: {status} to sid: {user_info['sid']}")
+        await sio.emit('verification_update', {'status': status}, room=user_info['sid'])
 
-        await sio.emit(
-            'verification_update', {
-                'status': status
-            }, room=user_info['sid']
-        )
 
-    print(f"Event emitted for User ID: {user_id}, Status: {status}")
 
 
 @sio.event

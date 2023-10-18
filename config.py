@@ -45,16 +45,17 @@ logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 
-class IgnorePingPongFilter(logging.Filter):
+class NoPingPongFilter(logging.Filter):
     def filter(self, record):
+        # Исключите логи, содержащие строки 'PING' и 'PONG'
         return 'PING' not in record.msg and 'PONG' not in record.msg
 
 
 engineio_logger = logging.getLogger('engineio')
-engineio_logger.addFilter(IgnorePingPongFilter())
+engineio_logger.addFilter(NoPingPongFilter())
 
 socketio_logger = logging.getLogger('socketio')
-socketio_logger.addFilter(IgnorePingPongFilter())
+socketio_logger.addFilter(NoPingPongFilter())
 
 # Database configuration
 

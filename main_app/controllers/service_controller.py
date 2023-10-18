@@ -1,7 +1,5 @@
-import json
 import os
 import traceback
-
 import magic
 from datetime import datetime
 from typing import Optional, List, Union
@@ -11,9 +9,9 @@ from fastapi.responses import StreamingResponse, JSONResponse
 from common.models.cities_models import City, Region
 from common.models.user_models import User, UserPhoto, VerificationQueue
 from common.schemas.service_schemas import VerificationUpdate, VerificationStatus
-from common.utils.service_utils import verify_token
-from config import s3_client, BUCKET_MESSAGE_IMAGES, BUCKET_MESSAGE_VOICES, BUCKET_PROFILE_IMAGES, SessionLocal, logger, \
-    sio
+from common.utils.service_utils import verify_token, send_event_to_socketio, send_push_notification
+from common.utils.user_utils import get_user_push_token
+from config import s3_client, BUCKET_MESSAGE_IMAGES, BUCKET_MESSAGE_VOICES, BUCKET_PROFILE_IMAGES, SessionLocal, logger
 from common.utils.auth_utils import get_user_id_from_token, get_token
 
 router = APIRouter(prefix="/service", tags=["Auth Controller"])
@@ -268,6 +266,7 @@ async def update_verification_status(
         verification = db.query(VerificationQueue).filter(VerificationQueue.user_id == user_id).first()
 
         if not verification:
+            logger.error("User not found in verification queue")
             raise HTTPException(status_code=404, detail="User not found in verification queue")
 
         verification.status = verification_update.status.value
@@ -276,31 +275,49 @@ async def update_verification_status(
         user = db.query(User).filter(User.id == user_id).first()
 
         if not user:
+            logger.error("User not found")
             raise HTTPException(status_code=404, detail="User not found")
 
+        title = ""
+        body = ""
         if verification_update.status == VerificationStatus.approved:
             user.verify = "approved"
             user.is_verified = True
+            title = "Успешная верификация!"
+            body = "Вы успешно верифицированы! Перезайдите в приложение."
         elif verification_update.status == VerificationStatus.denied:
             user.verify = "denied"
             user.is_verified = False
+            title = "Неудачная верификация!"
+            body = "Мы не смогли вас верифицировать. Отправьте нам фото для повторной верификации."
         else:
+            logger.error("Invalid status")
             raise HTTPException(status_code=400, detail="Invalid status")
 
         db.commit()
 
-        print(f"Sending event to socket: {verification_update.status.value}")
+        # Send push notification here
+        push_token = await get_user_push_token(user_id)
+        if push_token:
+            await send_push_notification(push_token, title, body, data={}, aps={})
 
-        # Добавьте try-except для отлавливания возможных ошибок
-        try:
-            await sio.emit(
-                'update_verification_status', {
-                    'status': verification_update.status.value
-                }
-            )
-        except Exception as e:
-            print(f"Error sending event to socket: {e}")
-            raise HTTPException(status_code=500, detail=str(e))
+    logger.info(f"Sending event to socket: {verification_update.status.value}")
+
+    event_data = {
+        "user_id": user_id,
+        "status": f"{verification_update.status.value}"
+    }
+
+    try:
+        socketio_url = 'http://socket_app:1025?no-auth=True'
+        event_name = 'update_verification_status'
+
+        await send_event_to_socketio(socketio_url, event_name, event_data)
+        logger.info("Event sent to socket successfully")
+        logger.info(f"Event data: {event_data}, Event name: {event_name}")
+    except Exception as e:
+        logger.error(f"Error sending event to socket: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
     return JSONResponse(
         content={
