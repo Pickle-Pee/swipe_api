@@ -325,3 +325,26 @@ async def update_verification_status(
             "message": f"Verification status updated to {verification_update.status.value}"
         }
     )
+
+
+@router.post("/send_sos_push")
+async def send_sos_push(access_token: str = Depends(get_token)) -> JSONResponse:
+    user_id = get_user_id_from_token(access_token)
+
+    with SessionLocal() as db:
+        user = db.query(User).filter(User.id == user_id).first()
+
+    if not user:
+        logger.error("User not found")
+        raise HTTPException(status_code=404, detail="User not found")
+
+    push_token = await get_user_push_token(user_id)
+    if push_token:
+        title = "SOS push"
+        body = "Ткни, чтобы перейти на SOS экран"
+        await send_push_notification(push_token, title, body, data={}, aps={})
+        logger.info(f"SOS push sent")
+        return JSONResponse(content={"status": "success", "message": "SOS push sent"})
+
+    logger.error("Push token not found")
+    return JSONResponse(content={"status": "error", "message": "Push token not found"}, status_code=404)

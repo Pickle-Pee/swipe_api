@@ -489,6 +489,122 @@ async def update_verification_status(sid, data):
         await sio.emit('verification_update', {'status': status}, room=user_info['sid'])
 
 
+@sio.event
+async def send_date_invitation(sid, data):
+    # Проверка данных
+    if isinstance(data, str):
+        data = json.loads(data)
+    chat_id = data.get('chat_id')
+
+    # Получаем sender_id из информации о подключении
+    sender_info = next((info for info in connected_users.values() if info['sid'] == sid), None)
+    if not sender_info:
+        await sio.emit('error', {'error': 'Authentication failed'}, room=sid)
+        return
+
+    sender_id = sender_info.get('user_id')
+    socketio_logger.info(f"User with ID {sender_id} is sending a date invitation to chat ID {chat_id}")
+
+    with SessionLocal() as db:
+        chat = db.query(Chat).filter(Chat.id == chat_id).first()
+        if chat is None:
+            await sio.emit('error', {'error': f'Chat with ID {chat_id} not found'}, room=sid)
+            return
+
+        recipient_id = chat.user1_id if chat.user2_id == sender_id else chat.user2_id
+
+        # Записываем приглашение в базу данных
+        new_invitation = DateInvitations(
+            sender_id=sender_id,
+            recipient_id=recipient_id,
+            chat_id=chat_id,
+            status='pending'
+        )
+        db.add(new_invitation)
+        db.commit()
+        socketio_logger.info(f"Date invitation from user ID {sender_id} to user ID {recipient_id} recorded in database")
+
+        recipient_info = connected_users.get(recipient_id)
+
+        # Отправляем уведомление адресату
+        if recipient_info:
+            recipient_sid = recipient_info.get('sid')
+            await sio.emit(
+                'date_invitation', {
+                    'chat_id': chat_id,
+                    'sender_id': sender_id,
+                }, room=recipient_sid
+            )
+
+            socketio_logger.info(
+                f"Preparing to send completer for date invitation from user ID {sender_id} to chat ID {chat_id}")
+
+            await sio.emit(
+                'completer', {
+                    'sender_id': sender_id,
+                    'status': 1,
+                    'chat_id': chat_id,
+                    'action': 'invitation_sent'
+                }, room=sid
+            )
+            socketio_logger.info(f"Date invitation sent to recipient ID {recipient_id} via socket")
+
+
+
+@sio.event
+async def respond_date_invitation(sid, data):
+    if isinstance(data, str):
+        data = json.loads(data)
+    chat_id = data.get('chat_id')
+    response = data.get('response')  # принять или отклонить
+
+    # Получаем sender_id из информации о подключении
+    sender_info = next((info for info in connected_users.values() if info['sid'] == sid), None)
+    if not sender_info:
+        await sio.emit('error', {'error': 'Authentication failed'}, room=sid)
+        return
+
+    sender_id = sender_info.get('user_id')
+    socketio_logger.info(f"User with ID {sender_id} responded to date invitation in chat ID {chat_id} with response: {response}")
+
+    with SessionLocal() as db:
+        chat = db.query(Chat).filter(Chat.id == chat_id).first()
+        if chat is None:
+            await sio.emit('error', {'error': f'Chat with ID {chat_id} not found'}, room=sid)
+            return
+
+        # Обновляем статус приглашения в базе данных
+        invitation = db.query(DateInvitations).filter(
+            DateInvitations.chat_id == chat_id, DateInvitations.recipient_id == sender_id).first()
+        if invitation:
+            invitation.status = response
+            db.commit()
+            socketio_logger.info(f"Date invitation status updated to {response} in database")
+
+        recipient_id = chat.user1_id if chat.user2_id == sender_id else chat.user2_id
+        recipient_info = connected_users.get(recipient_id)
+
+        # Отправляем ответ инициатору приглашения
+        if recipient_info:
+            recipient_sid = recipient_info.get('sid')
+            await sio.emit(
+                'date_response', {
+                    'chat_id': chat_id,
+                    'sender_id': sender_id,
+                    'response': response
+                }, room=recipient_sid
+            )
+            await sio.emit(
+                'completer', {
+                    'sender_id': sender_id,
+                    'status': 1,
+                    'chat_id': chat_id,
+                    'action': 'invitation_response',
+                    'response': response
+                }, room=sid
+            )
+            socketio_logger.info(f"Date response {response} sent to initiator ID {recipient_id} via socket")
+
 
 
 @sio.event

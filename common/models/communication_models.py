@@ -59,3 +59,14 @@ class Media(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     message = relationship("Message", back_populates="media")
+
+
+class DateInvitations(Base):
+    __tablename__ = 'date_invitations'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    sender_id = Column(Integer, ForeignKey('users.id'), nullable=False)
+    recipient_id = Column(Integer, ForeignKey('users.id'), nullable=False)
+    chat_id = Column(Integer, ForeignKey('chats.id'), nullable=False)
+    status = Column(Enum('pending', 'accepted', 'declined'), default='pending')
+    timestamp = Column(DateTime, default=datetime.now)
