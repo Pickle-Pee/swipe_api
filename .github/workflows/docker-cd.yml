@@ -44,6 +44,12 @@ jobs:
         docker-compose build
         docker-compose push
 
+    - name: Add SSH key to known_hosts
+      run: |
+        echo "${{ secrets.SSH_PRIVATE_KEY }}" > private_key
+        chmod 600 private_key
+        ssh-agent bash -c 'ssh-add private_key'
+
     - name: Deploy to server
       run: |
         ssh ${{ secrets.SERVER_USERNAME }}@${{ secrets.SERVER_HOST }} "cd /swipe_api && docker-compose pull && docker-compose up -d"
