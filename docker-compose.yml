@@ -1,0 +1,63 @@
+version: '3'
+services:
+  main_app:
+    build: ./main_app
+    ports:
+      - "1024:1024"
+    environment:
+      - PYTHONPATH=/app
+    volumes:
+      - ./common:/app/common
+      - ./config.py:/app/config.py
+    networks:
+      - swipe_network
+    env_file:
+      - .env
+
+  socket_app:
+    build: ./socket_app
+    ports:
+      - "1025:1025"
+    environment:
+      - PYTHONPATH=/app
+    volumes:
+      - ./common:/app/common
+      - ./config.py:/app/config.py
+    networks:
+      - swipe_network
+    env_file:
+      - .env
+
+  push_app:
+    build: ./push_app
+    ports:
+      - "1026:1026"
+    environment:
+      - PYTHONPATH=/app
+    volumes:
+      - ./common:/app/common
+      - ./config.py:/app/config.py
+      - /root/swipe_api/common/utils:/app/common/utils
+    networks:
+      - swipe_network
+    env_file:
+      - .env
+
+  admin_app:
+    build: ./admin_app
+    ports:
+      - "1027:1027"
+    environment:
+      - PYTHONPATH=/app
+    volumes:
+      - ./common:/app/common
+      - ./config.py:/app/config.py
+      - /root/swipe_api/common/utils:/app/common/utils
+    networks:
+      - swipe_network
+    env_file:
+      - .env
+
+networks:
+  swipe_network:
+    driver: bridge
