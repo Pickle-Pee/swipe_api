@@ -58,4 +58,4 @@ jobs:
 
     - name: Deploy to server
       run: |
-        ssh ${{ secrets.SERVER_USERNAME }}@${{ secrets.SERVER_HOST }} "cd /swipe_api && docker-compose pull && docker-compose up -d"
+        ssh -v ${{ secrets.SERVER_USERNAME }}@${{ secrets.SERVER_HOST }} "cd /swipe_api && docker-compose -e pull && docker-compose -e up -d"
