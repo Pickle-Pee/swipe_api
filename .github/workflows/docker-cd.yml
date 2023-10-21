@@ -41,7 +41,7 @@ jobs:
 
     - name: Build and push Docker image
       run: |
-        docker-compose build
+        docker-compose build -j 4
         docker-compose push
 
     - name: Add SSH key to known_hosts
