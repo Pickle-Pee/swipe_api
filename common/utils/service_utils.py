@@ -1,10 +1,10 @@
 import json
 
-from fastapi import HTTPException, Depends, security, status
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from fastapi import HTTPException
+from fastapi.security import HTTPBearer
 from socketio import AsyncClient
 
-from config import DADATA_API_URL, DADATA_API_TOKEN, logger, TG_VERIFY_KEY
+from config import DADATA_API_URL, DADATA_API_TOKEN, logger
 import httpx
 
 security = HTTPBearer()
@@ -50,15 +50,6 @@ async def send_push_notification(token, title, body, data, aps):
             return None
 
         return response.json()
-
-
-def verify_token(authorization: HTTPAuthorizationCredentials = Depends(security)):
-    token = authorization.credentials
-    if token != f"{TG_VERIFY_KEY}":
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid token")
-
 
 
 async def send_event_to_socketio(url, event_name, event_data):

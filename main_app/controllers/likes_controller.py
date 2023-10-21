@@ -3,10 +3,10 @@ from typing import List
 from sqlalchemy.orm import joinedload
 from fastapi import Depends, APIRouter, HTTPException
 from common.models.likes_models import Like, Dislike, Favorite
-from config import SessionLocal, SECRET_KEY
+from config import SessionLocal
 from common.schemas.likes_schemas import FavoriteCreate
 from common.models.user_models import User
-from common.schemas.user_schemas import UserDataResponse, UserLikesResponse
+from common.schemas.user_schemas import UserLikesResponse
 from common.utils.auth_utils import get_token, get_user_id_from_token
 
 router = APIRouter(prefix="/likes", tags=["Likes Controller"])

@@ -1,7 +1,7 @@
 from fastapi import HTTPException, APIRouter, Depends
 from common.models.user_models import User
 from common.utils.auth_utils import get_token, get_user_id_from_token
-from config import SessionLocal, SECRET_KEY
+from config import SessionLocal
 
 
 router = APIRouter(prefix="/subscriptions", tags=["Subscriptions Controller"])

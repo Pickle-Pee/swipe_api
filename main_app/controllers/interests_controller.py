@@ -1,6 +1,6 @@
 from fastapi import HTTPException, APIRouter, Depends
 from fastapi.responses import JSONResponse
-from config import SessionLocal, logger, SECRET_KEY
+from config import SessionLocal, logger
 from common.models.user_models import User
 from common.models.interests_models import Interest, UserInterest
 from common.models.error_models import ErrorResponse

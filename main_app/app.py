@@ -12,13 +12,13 @@ from controllers.matches_controller import router as matches_router
 from controllers.communication_controller import router as communication_router
 from controllers.service_controller import router as service_router
 
-from common.models.auth_models import *
-from common.models.user_models import *
-from common.models.interests_models import *
-from common.models.cities_models import *
-from common.models.likes_models import *
+# from common.models.auth_models import *
+# from common.models.user_models import *
+# from common.models.interests_models import *
+# from common.models.cities_models import *
+# from common.models.likes_models import *
 from common.models.communication_models import *
-from common.models.error_models import *
+# from common.models.error_models import *
 
 app = FastAPI()
 

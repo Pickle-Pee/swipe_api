@@ -1,6 +1,6 @@
 import os
 
-from fastapi import APIRouter, Depends, HTTPException, FastAPI
+from fastapi import Depends, HTTPException, FastAPI
 from fastapi.security import OAuth2PasswordRequestForm
 
 from common.utils.crud import get_admin_by_username

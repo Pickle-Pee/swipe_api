@@ -9,7 +9,7 @@ from fastapi.responses import StreamingResponse, JSONResponse
 from common.models.cities_models import City, Region
 from common.models.user_models import User, UserPhoto, VerificationQueue
 from common.schemas.service_schemas import VerificationUpdate, VerificationStatus
-from common.utils.service_utils import verify_token, send_event_to_socketio, send_push_notification
+from common.utils.service_utils import send_event_to_socketio, send_push_notification
 from common.utils.user_utils import get_user_push_token
 from config import s3_client, BUCKET_MESSAGE_IMAGES, BUCKET_MESSAGE_VOICES, BUCKET_PROFILE_IMAGES, SessionLocal, logger
 from common.utils.auth_utils import get_user_id_from_token, get_token

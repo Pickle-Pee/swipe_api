@@ -1,11 +1,7 @@
-from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from common.models.admin_models import Admin
-from common.models.auth_models import RefreshToken
 from common.models.communication_models import Chat, Message, Media
-from common.models.interests_models import UserInterest
-from common.models.likes_models import Dislike, Favorite, Like
 from common.models.user_models import User
 
 

@@ -1,16 +1,6 @@
 from datetime import date, datetime
 from pydantic import BaseModel, Field, validator
 from typing import Optional, List, Literal
-from sqlalchemy import Enum
-
-# class VerificationStatus(str, Enum):
-#     denied = "denied"
-#     approved = "approved"
-#     in_progress = "in_progress"
-#
-#     def __str__(self):
-#         return str(self.value)
-
 
 class UserCreate(BaseModel):
     class Config:

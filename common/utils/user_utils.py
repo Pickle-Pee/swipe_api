@@ -1,8 +1,6 @@
 import jwt
 from fastapi import Depends, HTTPException
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from config import SECRET_KEY, SessionLocal, AsyncSessionLocal
 from common.models.user_models import User, PushTokens
 from common.utils.auth_utils import get_token

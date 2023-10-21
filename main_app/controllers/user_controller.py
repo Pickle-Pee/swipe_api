@@ -3,7 +3,6 @@ from datetime import datetime
 from fastapi import HTTPException, APIRouter, Depends, status
 from fastapi.responses import Response
 from typing import List, Optional
-from sqlalchemy import text
 from common.models.cities_models import City
 from common.models.interests_models import Interest, UserInterest
 from common.utils.crud import delete_user_and_related_data
