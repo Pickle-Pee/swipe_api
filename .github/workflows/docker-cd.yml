@@ -47,6 +47,7 @@ jobs:
     - name: Add SSH key to known_hosts
       run: |
         echo "${{ secrets.SSH_PRIVATE_KEY }}" > private_key
+        echo "${{ secrets.SSH_PASSPHRASE }}" | ssh-add private_key
         chmod 600 private_key
         ssh-agent bash -c 'ssh-add private_key'
 
