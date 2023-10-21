@@ -27,6 +27,7 @@ class User(Base):
     status = Column(Text)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow)
+    deleted = Column(Boolean)
 
     refresh_tokens = relationship("RefreshToken", back_populates="user")
     interests = relationship("UserInterest", back_populates="user")
