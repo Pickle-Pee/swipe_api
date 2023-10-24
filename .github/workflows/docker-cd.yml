@@ -61,4 +61,4 @@ jobs:
 
     - name: Deploy to server
       run: |
-        sshpass -p "${{ secrets.SERVER_PASSWORD }}" ssh -v -i private_key ${{ secrets.SERVER_USERNAME }}@${{ secrets.SERVER_HOST }} "cd swipe_api && docker-compose pull && docker-compose up -d"
+        ssh -v -vvv ${{ secrets.SERVER_USERNAME }}@${{ secrets.SERVER_HOST }} "cd swipe_api && docker-compose pull && docker-compose up -d"
