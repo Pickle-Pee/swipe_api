@@ -56,6 +56,9 @@ jobs:
         mkdir -p ~/.ssh
         ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
 
+    - name: Install sshpass
+      run: sudo apt-get install -y sshpass
+
     - name: Deploy to server
       run: |
-        ssh -v -oHostKeyAlgorithms=+ssh-dss ${{ secrets.SERVER_USERNAME }}@${{ secrets.SERVER_HOST }} "cd /swipe_api && docker-compose pull && docker-compose up -d"
+        sshpass -p "${{ secrets.SERVER_PASSWORD }}" ssh -v -i private_key ${{ secrets.SERVER_USERNAME }}@${{ secrets.SERVER_HOST }} "cd /swipe_api && docker-compose pull && docker-compose up -d"
