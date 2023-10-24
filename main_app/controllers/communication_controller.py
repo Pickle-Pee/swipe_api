@@ -1,12 +1,12 @@
 from datetime import date
 from typing import List
 
-from common.models.communication_models import Chat, Message
+from common.models.communication_models import Chat, Message, DateInvitations
 from fastapi import Depends, APIRouter, HTTPException
 
 from common.models.user_models import User, UserPhoto
 from common.schemas.communication_schemas import CreateChatRequest, \
-    CreateChatResponse, UserInChat, ChatPersonResponse, ChatDetailsResponse
+    CreateChatResponse, UserInChat, ChatPersonResponse, ChatDetailsResponse, DateInvitationResponse
 from config import SessionLocal
 from common.utils.auth_utils import get_token, get_user_id_from_token
 
@@ -66,6 +66,11 @@ def get_chats(access_token: str = Depends(get_token)):
 
             avatar_url = avatar.photo_url if avatar else None
 
+            date_invitations = db.query(DateInvitations).filter(
+                DateInvitations.recipient_id == current_user,
+                DateInvitations.status == "pending"
+            ).all()
+
             user2_data = UserInChat(
                 user_id=user.id,
                 first_name=user.first_name,
@@ -121,6 +126,14 @@ def get_chats(access_token: str = Depends(get_token)):
                 last_message_sender_id=last_message_sender_id,
                 last_message_type=message_type
             )
+
+            for chat_response in chat_responses:
+                chat_response.date_invitations = [
+                    DateInvitationResponse(
+                        id=invite.id,
+                        sender_id=invite.sender_id,
+                        status=invite.status) for invite in date_invitations]
+
 
             chat_responses.append(chat_response)
 

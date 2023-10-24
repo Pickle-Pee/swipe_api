@@ -1,6 +1,6 @@
 import datetime
 import enum
-from typing import Optional
+from typing import Optional, List
 
 from pydantic import BaseModel
 
@@ -55,6 +55,12 @@ class UserInChat(BaseModel):
     status: Optional[str]
 
 
+class DateInvitationResponse(BaseModel):
+    id: int
+    sender_id: int
+    status: str
+
+
 class ChatPersonResponse(BaseModel):
     chat_id: int
     user: UserInChat
@@ -64,6 +70,7 @@ class ChatPersonResponse(BaseModel):
     last_message_status: Optional[int] = None
     last_message_sender_id: Optional[int]
     last_message_type: Optional[MessageTypeEnum]
+    date_invitations: List[DateInvitationResponse] = []
 
 
 class ChatDetailsResponse(BaseModel):
