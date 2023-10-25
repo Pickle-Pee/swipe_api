@@ -1,12 +1,6 @@
 name: Docker CI
 
-on:
-  push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - main
+on: [push, pull_request]
 
 jobs:
   build:
@@ -16,5 +10,16 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Build Docker Compose
-      run: docker-compose build
+    - name: Set up Docker
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y docker-ce docker-ce-cli containerd.io
+
+    - name: Build Docker image
+      run: |
+        docker-compose build
+
+    - name: Run tests (replace with your test command)
+      run: |
+        # If you have a specific command to run tests, replace the echo command with it.
+        echo "Run your tests here. For example: docker-compose run --rm app your-test-command"
