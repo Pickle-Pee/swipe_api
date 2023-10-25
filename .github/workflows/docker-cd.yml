@@ -7,8 +7,11 @@ on:
 
 jobs:
   deploy:
+    name: Build and Push ${{ matrix.service }} image
     runs-on: ubuntu-latest
-
+    strategy:
+      matrix:
+        service: [main_app, socket_app, push_app, admin_app]
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -17,54 +20,18 @@ jobs:
       id: vars
       run: echo ::set-output name=version::$(echo $(git rev-parse --short HEAD))
 
-    - name: Login to Docker Hub
+    - name: Login to Docker Hub using Token
       run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
 
-    - name: Create .env file
+    - name: Build and push ${{ matrix.service }} Docker image
       run: |
-        echo SECRET_KEY=${{ secrets.SECRET_KEY }} >> .env
-        echo DATABASE_URL=${{ secrets.DATABASE_URL }} >> .env
-        echo ASYNC_DATABASE_URL=${{ secrets.ASYNC_DATABASE_URL }} >> .env
-        echo MAIN_APP_HOST=${{ secrets.MAIN_APP_HOST }} >> .env
-        echo MAIN_APP_PORT=${{ secrets.MAIN_APP_PORT }} >> .env
-        echo MATCHES_APP_HOST=${{ secrets.MATCHES_APP_HOST }} >> .env
-        echo MATCHES_APP_PORT=${{ secrets.MATCHES_APP_PORT }} >> .env
-        echo ACCESS_TOKEN_EXPIRE_MINUTES=${{ secrets.ACCESS_TOKEN_EXPIRE_MINUTES }} >> .env
-        echo REFRESH_TOKEN_EXPIRE_HOURS=${{ secrets.REFRESH_TOKEN_EXPIRE_HOURS }} >> .env
-        echo YANDEX_KEY_ID=${{ secrets.YANDEX_KEY_ID }} >> .env
-        echo YANDEX_KEY=${{ secrets.YANDEX_KEY }} >> .env
-        echo BUCKET_MESSAGE_IMAGES=${{ secrets.BUCKET_MESSAGE_IMAGES }} >> .env
-        echo BUCKET_MESSAGE_VOICES=${{ secrets.BUCKET_MESSAGE_VOICES }} >> .env
-        echo BUCKET_PROFILE_IMAGES=${{ secrets.BUCKET_PROFILE_IMAGES }} >> .env
-        echo BUCKET_VERIFY_IMAGES=${{ secrets.BUCKET_VERIFY_IMAGES }} >> .env
-        echo SMS_API_KEY=${{ secrets.SMS_API_KEY }} >> .env
-        echo FIREBASE_CREDENTIALS_PATH=${{ secrets.FIREBASE_CREDENTIALS_PATH }} >> .env
-        echo VERIFY_CHAT_LINK=${{ secrets.VERIFY_CHAT_LINK }} >> .env
-        echo VERIFY_SEND_TEXT=${{ secrets.VERIFY_SEND_TEXT }} >> .env
-        echo VERIFY_CHAT_ID=${{ secrets.VERIFY_CHAT_ID }} >> .env
-        echo SMS_CENTER_LOGIN=${{ secrets.SMS_CENTER_LOGIN }} >> .env
-        echo SMS_CENTER_PASSWORD=${{ secrets.SMS_CENTER_PASSWORD }} >> .env
+        docker build -t kirillka564/swipe_api:${{ matrix.service }}-${{ steps.vars.outputs.version }} ./${{ matrix.service }}
+        docker push kirillka564/swipe_api:${{ matrix.service }}-${{ steps.vars.outputs.version }}
 
-    - name: Build and push main_app Docker image
-      run: |
-        docker build -t kirillka564/swipe_api:main_app-${{ steps.vars.outputs.version }} ./main_app
-        docker push kirillka564/swipe_api:main_app-${{ steps.vars.outputs.version }}
-
-    - name: Build and push socket_app Docker image
-      run: |
-        docker build -t kirillka564/swipe_api:socket_app-${{ steps.vars.outputs.version }} ./socket_app
-        docker push kirillka564/swipe_api:socket_app-${{ steps.vars.outputs.version }}
-
-    - name: Build and push push_app Docker image
-      run: |
-        docker build -t kirillka564/swipe_api:push_app-${{ steps.vars.outputs.version }} ./push_app
-        docker push kirillka564/swipe_api:push_app-${{ steps.vars.outputs.version }}
-
-    - name: Build and push admin_app Docker image
-      run: |
-        docker build -t kirillka564/swipe_api:admin_app-${{ steps.vars.outputs.version }} ./admin_app
-        docker push kirillka564/swipe_api:admin_app-${{ steps.vars.outputs.version }}
-
+  deploy_to_server:
+    needs: deploy
+    runs-on: ubuntu-latest
+    steps:
     - name: Add server to known_hosts
       run: |
         mkdir -p ~/.ssh

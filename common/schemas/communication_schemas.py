@@ -56,7 +56,6 @@ class UserInChat(BaseModel):
 
 
 class DateInvitationResponse(BaseModel):
-    id: int
     sender_id: int
     status: str
 

@@ -130,7 +130,6 @@ def get_chats(access_token: str = Depends(get_token)):
             for chat_response in chat_responses:
                 chat_response.date_invitations = [
                     DateInvitationResponse(
-                        id=invite.id,
                         sender_id=invite.sender_id,
                         status=invite.status) for invite in date_invitations]
 
