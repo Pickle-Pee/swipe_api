@@ -120,7 +120,7 @@ def send_verification_code(phone_number: str):
             db.add(temp_code)
             db.commit()
 
-            smsc.send_sms(phone_number, f"Ваш код авторизации {verification_code}", sender="sms")
+            smsc.send_sms(phone_number, f"Ваш код авторизации {verification_code}", sender="swipe_auth")
 
             return VerificationResponse(verification_code=verification_code)
         except Exception as e:
