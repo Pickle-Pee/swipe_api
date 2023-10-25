@@ -3,6 +3,8 @@ import os
 from fastapi import Depends, HTTPException, FastAPI
 from fastapi.security import OAuth2PasswordRequestForm
 
+from common.models.user_models import User
+from common.schemas.user_schemas import PersonalUserDataResponse
 from common.utils.crud import get_admin_by_username
 from common.utils.service_utils import security
 from config import SessionLocal
@@ -24,6 +26,15 @@ async def login_admin(form_data: OAuth2PasswordRequestForm = Depends()):
 
         access_token = security.create_access_token(data={"sub": admin.username, "admin_id": admin.id})
         return {"access_token": access_token, "token_type": "bearer"}
+
+
+@app.get("/users", response_model=PersonalUserDataResponse)
+async def get_all_users():
+    with SessionLocal() as db:
+        users = db.query(User).all()
+        if not users:
+            raise HTTPException(status_code=404, detail="Users not found")
+        return PersonalUserDataResponse(users=users)
 
 if __name__ == "__main__":
     import uvicorn

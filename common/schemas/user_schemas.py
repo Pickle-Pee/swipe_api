@@ -70,6 +70,7 @@ class PersonalUserDataResponse(BaseModel):
     status: Optional[str] = None
     avatar_url: Optional[str] = None
     interests: Optional[List[InterestResponse]] = None
+    deleted: Optional[bool]
 
 
 class UserLikesResponse(BaseModel):
