@@ -1,6 +1,7 @@
 version: '3'
 services:
   main_app:
+    image: kirillka564/main_app:latest
     build: ./main_app
     ports:
       - "1024:1024"
@@ -15,6 +16,7 @@ services:
       - .env
 
   socket_app:
+    image: kirillka564/socket_app:latest
     build: ./socket_app
     ports:
       - "1025:1025"
@@ -29,6 +31,7 @@ services:
       - .env
 
   push_app:
+    image: kirillka564/push_app:latest
     build: ./push_app
     ports:
       - "1026:1026"
@@ -44,6 +47,7 @@ services:
       - .env
 
   admin_app:
+    image: kirillka564/admin_app:latest
     build: ./admin_app
     ports:
       - "1027:1027"
