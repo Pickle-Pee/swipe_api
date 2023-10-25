@@ -15,6 +15,29 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y docker-ce docker-ce-cli containerd.io
 
+    - name: Create .env file
+      run: |
+        echo SECRET_KEY=${{ secrets.SECRET_KEY }} >> .env
+        echo DATABASE_URL=${{ secrets.DATABASE_URL }} >> .env
+        echo ASYNC_DATABASE_URL=${{ secrets.ASYNC_DATABASE_URL }} >> .env
+        echo MAIN_APP_HOST=${{ secrets.MAIN_APP_HOST }} >> .env
+        echo MAIN_APP_PORT=${{ secrets.MAIN_APP_PORT }} >> .env
+        echo MATCHES_APP_HOST=${{ secrets.MATCHES_APP_HOST }} >> .env
+        echo MATCHES_APP_PORT=${{ secrets.MATCHES_APP_PORT }} >> .env
+        echo ACCESS_TOKEN_EXPIRE_MINUTES=${{ secrets.ACCESS_TOKEN_EXPIRE_MINUTES }} >> .env
+        echo REFRESH_TOKEN_EXPIRE_HOURS=${{ secrets.REFRESH_TOKEN_EXPIRE_HOURS }} >> .env
+        echo YANDEX_KEY_ID=${{ secrets.YANDEX_KEY_ID }} >> .env
+        echo YANDEX_KEY=${{ secrets.YANDEX_KEY }} >> .env
+        echo BUCKET_MESSAGE_IMAGES=${{ secrets.BUCKET_MESSAGE_IMAGES }} >> .env
+        echo BUCKET_MESSAGE_VOICES=${{ secrets.BUCKET_MESSAGE_VOICES }} >> .env
+        echo BUCKET_PROFILE_IMAGES=${{ secrets.BUCKET_PROFILE_IMAGES }} >> .env
+        echo BUCKET_VERIFY_IMAGES=${{ secrets.BUCKET_VERIFY_IMAGES }} >> .env
+        echo SMS_API_KEY=${{ secrets.SMS_API_KEY }} >> .env
+        echo FIREBASE_CREDENTIALS_PATH=${{ secrets.FIREBASE_CREDENTIALS_PATH }} >> .env
+        echo VERIFY_CHAT_LINK=${{ secrets.VERIFY_CHAT_LINK }} >> .env
+        echo VERIFY_SEND_TEXT=${{ secrets.VERIFY_SEND_TEXT }} >> .env
+        echo VERIFY_CHAT_ID=${{ secrets.VERIFY_CHAT_ID }} >> .env
+
     - name: Build Docker image
       run: |
         docker-compose build
