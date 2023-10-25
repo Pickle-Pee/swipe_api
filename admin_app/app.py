@@ -25,7 +25,6 @@ async def login_admin(form_data: OAuth2PasswordRequestForm = Depends()):
         access_token = security.create_access_token(data={"sub": admin.username, "admin_id": admin.id})
         return {"access_token": access_token, "token_type": "bearer"}
 
-
 if __name__ == "__main__":
     import uvicorn
 
