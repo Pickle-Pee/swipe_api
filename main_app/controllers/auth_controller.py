@@ -14,14 +14,16 @@ from common.models.user_models import User, VerificationQueue
 from common.models.error_models import ErrorResponse
 from common.schemas.auth_schemas import TokenResponse, CheckCodeResponse, VerificationResponse
 from common.schemas.user_schemas import UserCreate, UserIdResponse
+from common.utils.smsc_api import SMSC
 from config import SECRET_KEY, logger
 from common.utils.auth_utils import create_refresh_token, create_access_token, validate_phone_number, get_token, \
-    get_user_id_from_token, send_photos_to_bot
+    get_user_id_from_token, send_photos_to_bot, generate_verification_code
 import jwt
 from config import s3_client, SessionLocal, BUCKET_VERIFY_IMAGES
 
 
 router = APIRouter(prefix="/auth", tags=["Auth Controller"])
+smsc = SMSC()
 
 
 @router.post("/refresh_token", response_model=TokenResponse)
@@ -113,10 +115,12 @@ def send_verification_code(phone_number: str):
                 error_response = ErrorResponse(detail="Некорректный номер телефона", code=666)
                 return JSONResponse(content=error_response.dict(), status_code=400)
 
-            verification_code = "000000"
+            verification_code = generate_verification_code()
             temp_code = TemporaryCode(phone_number=phone_number, code=verification_code)
             db.add(temp_code)
             db.commit()
+
+            smsc.send_sms(phone_number, f"Ваш код авторизации {verification_code}", sender="sms")
 
             return VerificationResponse(verification_code=verification_code)
         except Exception as e:

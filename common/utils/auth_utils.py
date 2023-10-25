@@ -1,5 +1,6 @@
 import json
 import os
+import random
 
 import requests
 from fastapi import HTTPException, Header
@@ -71,30 +72,6 @@ def get_user_id_from_token(access_token: str):
         raise HTTPException(status_code=401, detail="Invalid token")
 
 
-def send_sms(phone_number: str, text: str, api_key: str):
-    url = "https://gate.smsaero.ru/v2/sms/send"
-
-    params = {
-        "number": phone_number,
-        "text": text,
-        "sign": "NEWS",  # Подпись сообщения, может быть установлена в аккаунте SMS Aero
-        "channel": "DIRECT"  # Канал отправки
-    }
-
-    headers = {
-        "Content-Type": "application/json",
-        "Authorization": f"Bearer {api_key}"
-    }
-
-    response = requests.post(url, params=params, headers=headers)
-
-    if response.status_code == 200:
-        return response.json()
-    else:
-        print("Failed to send SMS:", response.status_code, response.text)
-        return None
-
-
 def send_text_message(user_id, first_name):
     data = {
         "chat_id": f"{VERIFY_CHAT_ID}",
@@ -138,3 +115,8 @@ def send_photos_to_bot(user_id, first_name, photo_paths):
         print(response.text)
 
     return response.json()
+
+
+def generate_verification_code(length=6):
+    """Generate a random verification code of the specified length."""
+    return ''.join([str(random.randint(0, 9)) for _ in range(length)])

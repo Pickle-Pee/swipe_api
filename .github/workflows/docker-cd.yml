@@ -38,6 +38,8 @@ jobs:
         echo VERIFY_CHAT_LINK=${{ secrets.VERIFY_CHAT_LINK }} >> .env
         echo VERIFY_SEND_TEXT=${{ secrets.VERIFY_SEND_TEXT }} >> .env
         echo VERIFY_CHAT_ID=${{ secrets.VERIFY_CHAT_ID }} >> .env
+        echo SMS_CENTER_LOGIN=${{ secrets.SMS_CENTER_LOGIN }} >> .env
+        echo SMS_CENTER_PASSWORD=${{ secrets.SMS_CENTER_PASSWORD }} >> .env
 
     - name: Build and push Docker image
       run: |
