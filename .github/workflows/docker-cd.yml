@@ -60,13 +60,3 @@ jobs:
           cd swipe_api
           docker-compose pull
           docker-compose up -d
-
-    - name: Send Telegram Notification
-      if: always()
-      uses: appleboy/telegram-action@master
-      with:
-        to: ${{ secrets.TELEGRAM_CHAT_ID }}
-        token: ${{ secrets.TELEGRAM_TOKEN }}
-        message: |
-          Build ${{ github.run_id }} of ${{ github.repository }} by ${{ github.actor }} completed.
-          Status: ${{ job.status }}.

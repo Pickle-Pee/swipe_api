@@ -46,14 +46,3 @@ jobs:
       run: |
         # If you have a specific command to run tests, replace the echo command with it.
         echo "Run your tests here. For example: docker-compose run --rm app your-test-command"
-
-    - name: Send Telegram Notification
-      if: always()
-      uses: appleboy/telegram-action@master
-      with:
-        to: ${{ secrets.TELEGRAM_CHAT_ID }}
-        token: ${{ secrets.TELEGRAM_TOKEN }}
-        message_thread_id: 25
-        message: |
-          Build ${{ github.run_id }} of ${{ github.repository }} by ${{ github.actor }} completed.
-          Status: ${{ job.status }}.
