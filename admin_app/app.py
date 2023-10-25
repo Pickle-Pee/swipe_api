@@ -3,10 +3,9 @@ import os
 from fastapi import Depends, HTTPException, FastAPI
 from fastapi.security import OAuth2PasswordRequestForm
 
-from common.models.user_models import User
-from common.schemas.user_schemas import PersonalUserDataResponse
-from common.utils.crud import get_admin_by_username
-from common.utils.service_utils import security
+from common.models import User
+from common.schemas import PersonalUserDataResponse
+from common.utils import get_admin_by_username, security
 from config import SessionLocal
 
 app = FastAPI()

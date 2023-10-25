@@ -1,13 +1,17 @@
 from datetime import date
 from typing import List
-
-from common.models import Chat, Message, DateInvitations, User, UserPhoto
 from fastapi import Depends, APIRouter, HTTPException
-
-from common.schemas.communication_schemas import CreateChatRequest, \
-    CreateChatResponse, UserInChat, ChatPersonResponse, ChatDetailsResponse, DateInvitationResponse
+from common.models import Chat, Message, DateInvitations, User, UserPhoto
+from common.schemas import (
+    CreateChatRequest,
+    CreateChatResponse,
+    UserInChat,
+    ChatPersonResponse,
+    ChatDetailsResponse,
+    DateInvitationResponse
+)
+from common.utils import get_token, get_user_id_from_token
 from config import SessionLocal
-from common.utils.auth_utils import get_token, get_user_id_from_token
 
 router = APIRouter(prefix="/communication", tags=["Communication Controller"])
 

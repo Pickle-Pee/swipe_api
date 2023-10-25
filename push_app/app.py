@@ -1,22 +1,16 @@
 from fastapi import FastAPI, HTTPException, status
-from pydantic import BaseModel
 import firebase_admin
-from firebase_admin import messaging, credentials
-from config import FIREBASE_CREDENTIALS_PATH
 import os
+from firebase_admin import messaging, credentials
+from common.schemas import PushMessage
+from config import FIREBASE_CREDENTIALS_PATH
+
 
 
 app = FastAPI()
 
 cred = credentials.Certificate(FIREBASE_CREDENTIALS_PATH)
 firebase_admin.initialize_app(cred)
-
-
-class PushMessage(BaseModel):
-    token: str
-    title: str
-    body: str
-
 
 @app.post("/send_push")
 async def send_push(msg: PushMessage):

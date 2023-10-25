@@ -1,18 +1,28 @@
 from datetime import datetime
-
+import traceback
+import requests
+import random
 from fastapi import HTTPException, APIRouter, Depends, status
 from fastapi.responses import Response
 from typing import List, Optional
 from common.models import City, User, PushTokens, UserPhoto, UserGeolocation, Interest, UserInterest
-from common.utils.crud import delete_user_and_related_data
-from common.utils.match_utils import get_neural_network_match_percentage
+from common.utils import (
+    get_neural_network_match_percentage,
+    get_token,
+    get_user_id_from_token,
+    delete_user_and_related_data
+)
+from common.schemas import (
+    UserDataResponse,
+    AddTokenRequest,
+    PersonalUserDataResponse,
+    InterestResponseUser,
+    UpdateUserRequest,
+    UserPhotosResponse,
+    AddGeolocationRequest
+)
 from config import SessionLocal, logger
-from common.schemas.user_schemas import UserDataResponse, AddTokenRequest, PersonalUserDataResponse, InterestResponse, \
-    UpdateUserRequest, UserPhotosResponse, AddGeolocationRequest
-from common.utils.auth_utils import get_token, get_user_id_from_token
-import traceback
-import requests
-import random
+
 
 router = APIRouter(prefix="/user", tags=["User Controller"])
 
@@ -32,7 +42,7 @@ async def get_current_user(access_token: str = Depends(get_token)):
             UserInterest, UserInterest.interest_id == Interest.id
         ).filter(UserInterest.user_id == user_id).all()
 
-        interests = [InterestResponse(interest_id=id, interest_text=text) for id, text in interests_data]
+        interests = [InterestResponseUser(interest_id=id, interest_text=text) for id, text in interests_data]
 
         avatar = db.query(UserPhoto).filter(
             UserPhoto.user_id == user_id,
@@ -74,7 +84,7 @@ def get_user(user_id: Optional[int] = None, access_token: str = Depends(get_toke
                     UserInterest, UserInterest.interest_id == Interest.id
                 ).filter(UserInterest.user_id == user_id).all()
 
-                interests = [InterestResponse(interest_id=id, interest_text=text) for id, text in interests_data]
+                interests = [InterestResponseUser(interest_id=id, interest_text=text) for id, text in interests_data]
 
                 return {
                     "id": user.id,

@@ -37,7 +37,7 @@ class UserIdResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
 
-class InterestResponse(BaseModel):
+class InterestResponseUser(BaseModel):
     interest_id: int
     interest_text: str
 
@@ -54,7 +54,7 @@ class UserDataResponse(BaseModel):
     about_me: Optional[str] = None
     status: Optional[str] = None
     avatar_url: Optional[str] = None
-    interests: Optional[List[InterestResponse]] = None
+    interests: Optional[List[InterestResponseUser]] = None
     match_percentage: Optional[int] = None
 
 
@@ -69,7 +69,7 @@ class PersonalUserDataResponse(BaseModel):
     about_me: Optional[str] = None
     status: Optional[str] = None
     avatar_url: Optional[str] = None
-    interests: Optional[List[InterestResponse]] = None
+    interests: Optional[List[InterestResponseUser]] = None
     deleted: Optional[bool]
 
 

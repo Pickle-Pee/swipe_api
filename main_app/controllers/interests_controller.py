@@ -2,8 +2,8 @@ from fastapi import HTTPException, APIRouter, Depends
 from fastapi.responses import JSONResponse
 from config import SessionLocal, logger
 from common.models import User, Interest, UserInterest, ErrorResponse
-from common.schemas.interests_schemas import AddInterestsRequest, InterestResponse, UserInterestResponse
-from common.utils.auth_utils import get_token, get_user_id_from_token
+from common.schemas import AddInterestsRequest, InterestResponse, UserInterestResponse
+from common.utils import get_token, get_user_id_from_token
 
 router = APIRouter(prefix="/interest", tags=["Interests Controller"])
 

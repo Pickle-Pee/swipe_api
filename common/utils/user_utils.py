@@ -1,7 +1,7 @@
 import jwt
 from fastapi import Depends, HTTPException
 from sqlalchemy import select
-from config import SECRET_KEY, SessionLocal, AsyncSessionLocal
+from config import SECRET_KEY, AsyncSessionLocal
 from common.models import User, PushTokens
 from common.utils.auth_utils import get_token
 
@@ -15,15 +15,6 @@ def get_current_user(token: str = Depends(get_token)):
         raise HTTPException(status_code=401, detail="Token has expired")
     except jwt.JWTError:
         raise HTTPException(status_code=401, detail="Could not validate credentials")
-
-
-def get_current_active_user(phone_number: str = Depends(get_current_user)):
-    db = SessionLocal()
-    user = db.query(User).filter_by(phone_number=phone_number).first()
-    if user:
-        return user
-    raise HTTPException(status_code=404, detail="User not found")
-
 
 
 async def get_user_push_token(user_id: int):

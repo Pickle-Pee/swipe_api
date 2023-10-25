@@ -1,6 +1,6 @@
 from fastapi import HTTPException, APIRouter, Depends
 from common.models import User
-from common.utils.auth_utils import get_token, get_user_id_from_token
+from common.utils import get_token, get_user_id_from_token
 from config import SessionLocal
 
 

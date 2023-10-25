@@ -1,32 +1,11 @@
 import json
-
-from fastapi import HTTPException
 from fastapi.security import HTTPBearer
 from socketio import AsyncClient
-
-from config import DADATA_API_URL, DADATA_API_TOKEN, logger
+from config import logger
 import httpx
 
 security = HTTPBearer()
 sio_client = AsyncClient()
-
-async def get_cities(query: str):
-    headers = {
-        "Authorization": f"Token {DADATA_API_TOKEN}",
-        "Content-Type": "application/json",
-    }
-
-    data = {"query": query, "locations": [{"country": "Россия"}], "from_bound": {"value": "city"}}
-
-    async with httpx.AsyncClient() as client:
-        response = await client.post(DADATA_API_URL, json=data, headers=headers)
-
-    if response.status_code != 200:
-        raise HTTPException(status_code=response.status_code, detail="Failed to retrieve data")
-
-    cities = [suggestion["value"] for suggestion in response.json()["suggestions"] if suggestion["data"]["city"]]
-    return cities
-
 
 async def send_push_notification(token, title, body, data, aps):
     url = "http://push_app:1026/send_push"

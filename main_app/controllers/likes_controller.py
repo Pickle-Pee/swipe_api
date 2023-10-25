@@ -2,11 +2,10 @@ from datetime import timedelta, datetime
 from typing import List
 from sqlalchemy.orm import joinedload
 from fastapi import Depends, APIRouter, HTTPException
-from common.models import Like, Dislike, Favorite, User
 from config import SessionLocal
-from common.schemas.likes_schemas import FavoriteCreate
-from common.schemas.user_schemas import UserLikesResponse
-from common.utils.auth_utils import get_token, get_user_id_from_token
+from common.models import Like, Dislike, Favorite, User
+from common.schemas import FavoriteCreate, UserLikesResponse
+from common.utils import get_token, get_user_id_from_token
 
 router = APIRouter(prefix="/likes", tags=["Likes Controller"])
 

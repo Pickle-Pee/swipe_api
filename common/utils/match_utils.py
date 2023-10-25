@@ -1,31 +1,15 @@
-import re
 import warnings
 from datetime import datetime
-
 import joblib
 import numpy as np
 import pandas as pd
 from sklearn.exceptions import DataConversionWarning
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.preprocessing import MinMaxScaler
-
-from common.models import City, Interest, UserInterest, Favorite
+from common.models import City, Interest, UserInterest
 from config import SessionLocal
 
 model = joblib.load('/app/common/utils/best_model.pkl')
-
-def parse_interests(interests_str):
-    return re.findall(r'\w+', interests_str)
-
-
-def check_if_favorite(user_id: int, other_user_id: int) -> bool:
-    with SessionLocal() as db:
-        favorite_entry = db.query(Favorite).filter(
-            Favorite.user_id == user_id,
-            Favorite.favorite_user_id == other_user_id
-        ).first()
-
-        return bool(favorite_entry)
 
 
 def get_neural_network_match_percentage(user1, user2):

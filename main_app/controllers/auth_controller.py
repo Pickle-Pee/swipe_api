@@ -1,22 +1,45 @@
 import os
 import traceback
 from datetime import datetime
-
 import magic
-
-from fastapi import HTTPException, status, APIRouter, Depends, UploadFile, File
 from fastapi.responses import JSONResponse
 from sqlalchemy import func
-
-from common.models import TemporaryCode, RefreshToken, City, Region, User, VerificationQueue, ErrorResponse
-from common.schemas.auth_schemas import TokenResponse, CheckCodeResponse, VerificationResponse
-from common.schemas.user_schemas import UserCreate, UserIdResponse
-from common.utils.smsc_api import SMSC
-from config import SECRET_KEY, logger
-from common.utils.auth_utils import create_refresh_token, create_access_token, validate_phone_number, get_token, \
-    get_user_id_from_token, send_photos_to_bot, generate_verification_code
 import jwt
-from config import s3_client, SessionLocal, BUCKET_VERIFY_IMAGES
+from fastapi import (
+    HTTPException,
+    status,
+    APIRouter,
+    Depends,
+    UploadFile,
+    File
+)
+from common.models import (
+    TemporaryCode,
+    RefreshToken,
+    City,
+    Region,
+    User,
+    VerificationQueue,
+    ErrorResponse
+)
+from common.schemas import (
+    TokenResponse,
+    CheckCodeResponse,
+    VerificationResponse,
+    UserCreate,
+    UserIdResponse
+)
+
+from common.utils import (
+    create_refresh_token,
+    create_access_token,
+    validate_phone_number,
+    get_token,
+    get_user_id_from_token,
+    send_photos_to_bot,
+    generate_verification_code)
+from common.utils.smsc_api import SMSC
+from config import SECRET_KEY, logger, s3_client, SessionLocal, BUCKET_VERIFY_IMAGES
 
 
 router = APIRouter(prefix="/auth", tags=["Auth Controller"])
@@ -58,8 +81,7 @@ def get_refreshed_token(refresh_token: str):
 
 @router.post(
     "/check_code", summary="Проверка кода авторизации", response_model=CheckCodeResponse,
-    responses={status.HTTP_400_BAD_REQUEST: {"model": ErrorResponse}}
-)
+    responses={status.HTTP_400_BAD_REQUEST: {"model": ErrorResponse}})
 def check_verification_code(phone_number: str, verification_code: str):
     with SessionLocal() as db:
         try:
@@ -98,12 +120,10 @@ def validate_phone(phone_number: str):
                                 detail="Error validating phone number")
 
 
-@router.post(
-    "/send_code", summary="Отправка кода авторизации", responses={
+@router.post("/send_code", summary="Отправка кода авторизации", responses={
         status.HTTP_400_BAD_REQUEST: {"model": ErrorResponse},
         status.HTTP_200_OK: {"model": VerificationResponse}
-    }
-)
+})
 def send_verification_code(phone_number: str):
     with SessionLocal() as db:
         try:

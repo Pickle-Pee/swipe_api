@@ -3,11 +3,12 @@ import numpy as np
 import pandas as pd
 from fastapi import HTTPException, APIRouter, Depends
 from typing import List
+from datetime import datetime
 from common.models import City, Interest, UserInterest, User
-from common.schemas.match_schemas import MatchResponse
+from common.schemas import MatchResponse
 from common.utils.auth_utils import get_token, get_user_id_from_token
 from config import SessionLocal
-from datetime import datetime
+
 
 model = joblib.load('/app/common/utils/best_model.pkl')
 router = APIRouter(prefix="/match", tags=["Matches Controller"])

@@ -78,3 +78,9 @@ class ChatDetailsResponse(BaseModel):
     user_age: int
     avatar_url: Optional[str]
     status: Optional[str]
+
+
+class PushMessage(BaseModel):
+    token: str
+    title: str
+    body: str
