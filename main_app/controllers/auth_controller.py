@@ -8,10 +8,7 @@ from fastapi import HTTPException, status, APIRouter, Depends, UploadFile, File
 from fastapi.responses import JSONResponse
 from sqlalchemy import func
 
-from common.models.auth_models import TemporaryCode, RefreshToken
-from common.models.cities_models import City, Region
-from common.models.user_models import User, VerificationQueue
-from common.models.error_models import ErrorResponse
+from common.models import TemporaryCode, RefreshToken, City, Region, User, VerificationQueue, ErrorResponse
 from common.schemas.auth_schemas import TokenResponse, CheckCodeResponse, VerificationResponse
 from common.schemas.user_schemas import UserCreate, UserIdResponse
 from common.utils.smsc_api import SMSC

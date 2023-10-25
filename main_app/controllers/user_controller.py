@@ -3,12 +3,10 @@ from datetime import datetime
 from fastapi import HTTPException, APIRouter, Depends, status
 from fastapi.responses import Response
 from typing import List, Optional
-from common.models.cities_models import City
-from common.models.interests_models import Interest, UserInterest
+from common.models import City, User, PushTokens, UserPhoto, UserGeolocation, Interest, UserInterest
 from common.utils.crud import delete_user_and_related_data
 from common.utils.match_utils import get_neural_network_match_percentage
 from config import SessionLocal, logger
-from common.models.user_models import User, PushTokens, UserPhoto, UserGeolocation
 from common.schemas.user_schemas import UserDataResponse, AddTokenRequest, PersonalUserDataResponse, InterestResponse, \
     UpdateUserRequest, UserPhotosResponse, AddGeolocationRequest
 from common.utils.auth_utils import get_token, get_user_id_from_token
@@ -54,7 +52,8 @@ async def get_current_user(access_token: str = Depends(get_token)):
             "interests": interests if interests else None,
             "about_me": user.about_me,
             "status": user.status,
-            "avatar_url": avatar_url
+            "avatar_url": avatar_url,
+            "deleted": user.deleted
         }
 
 

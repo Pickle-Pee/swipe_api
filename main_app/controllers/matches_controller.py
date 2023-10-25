@@ -3,10 +3,8 @@ import numpy as np
 import pandas as pd
 from fastapi import HTTPException, APIRouter, Depends
 from typing import List
-from common.models.cities_models import City
+from common.models import City, Interest, UserInterest, User
 from common.schemas.match_schemas import MatchResponse
-from common.models.user_models import User
-from common.models.interests_models import Interest, UserInterest
 from common.utils.auth_utils import get_token, get_user_id_from_token
 from config import SessionLocal
 from datetime import datetime

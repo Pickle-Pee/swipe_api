@@ -1,9 +1,7 @@
 from fastapi import HTTPException, APIRouter, Depends
 from fastapi.responses import JSONResponse
 from config import SessionLocal, logger
-from common.models.user_models import User
-from common.models.interests_models import Interest, UserInterest
-from common.models.error_models import ErrorResponse
+from common.models import User, Interest, UserInterest, ErrorResponse
 from common.schemas.interests_schemas import AddInterestsRequest, InterestResponse, UserInterestResponse
 from common.utils.auth_utils import get_token, get_user_id_from_token
 

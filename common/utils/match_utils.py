@@ -9,9 +9,7 @@ from sklearn.exceptions import DataConversionWarning
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.preprocessing import MinMaxScaler
 
-from common.models.cities_models import City
-from common.models.interests_models import Interest, UserInterest
-from common.models.likes_models import Favorite
+from common.models import City, Interest, UserInterest, Favorite
 from config import SessionLocal
 
 model = joblib.load('/app/common/utils/best_model.pkl')

@@ -6,8 +6,7 @@ from typing import Optional, List, Union
 from fastapi import UploadFile, File, APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse, JSONResponse
 
-from common.models.cities_models import City, Region
-from common.models.user_models import User, UserPhoto, VerificationQueue
+from common.models import City, Region, User, UserPhoto, VerificationQueue
 from common.schemas.service_schemas import VerificationUpdate, VerificationStatus
 from common.utils.service_utils import send_event_to_socketio, send_push_notification
 from common.utils.user_utils import get_user_push_token

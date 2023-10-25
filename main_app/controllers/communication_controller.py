@@ -1,10 +1,9 @@
 from datetime import date
 from typing import List
 
-from common.models.communication_models import Chat, Message, DateInvitations
+from common.models import Chat, Message, DateInvitations, User, UserPhoto
 from fastapi import Depends, APIRouter, HTTPException
 
-from common.models.user_models import User, UserPhoto
 from common.schemas.communication_schemas import CreateChatRequest, \
     CreateChatResponse, UserInChat, ChatPersonResponse, ChatDetailsResponse, DateInvitationResponse
 from config import SessionLocal
@@ -139,6 +138,7 @@ def get_chats(access_token: str = Depends(get_token)):
         return chat_responses
 
 
+@router.get("/{chat_id}", response_model=ChatDetailsResponse, summary="Получить детали чата")
 def modified_get_chat_details(chat_id: int, access_token: str = Depends(get_token)):
     with SessionLocal() as db:
         current_user_id = get_user_id_from_token(access_token)

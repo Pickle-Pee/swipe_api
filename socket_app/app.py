@@ -1,19 +1,13 @@
 import json
 import os
+from datetime import datetime
 
+from common.models import User, Chat, Message, Media, DateInvitations
 from common.utils.auth_utils import get_user_id_from_token
 from common.utils.service_utils import send_push_notification
 from common.utils.user_utils import get_user_push_token, get_user_name
-from config import SessionLocal, logger, engine, socketio_logger, sio, socket_app
+from config import SessionLocal, logger, engine, socketio_logger, sio, socket_app, Base
 from urllib.parse import parse_qs
-
-# from common.models.auth_models import *
-from common.models.user_models import *
-# from common.models.interests_models import *
-# from common.models.cities_models import *
-# from common.models.likes_models import *
-from common.models.communication_models import *
-# from common.models.error_models import *
 
 connected_users = {}
 

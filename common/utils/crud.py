@@ -1,8 +1,6 @@
 from sqlalchemy.orm import Session
 
-from common.models.admin_models import Admin
-from common.models.communication_models import Chat, Message, Media
-from common.models.user_models import User
+from common.models import Admin, Chat, User, Message, Media
 
 
 def delete_user_and_related_data(db: Session, user_id: int) -> bool:
