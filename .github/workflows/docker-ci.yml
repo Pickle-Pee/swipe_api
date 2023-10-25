@@ -40,7 +40,7 @@ jobs:
 
     - name: Build Docker image
       run: |
-        docker-compose build
+        docker-compose build -j 4
 
     - name: Run tests (replace with your test command)
       run: |
