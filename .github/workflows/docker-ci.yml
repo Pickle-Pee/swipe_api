@@ -43,7 +43,7 @@ jobs:
     - name: Build Docker image
       run: |
         docker-compose down
-        docker-compose build -j 4
+        docker-compose build --no-cache -j 4
         docker-compose up -d
 
     - name: Run tests (replace with your test command)
