@@ -40,13 +40,39 @@ jobs:
         echo SMS_CENTER_LOGIN=${{ secrets.SMS_CENTER_LOGIN }} >> .env
         echo SMS_CENTER_PASSWORD=${{ secrets.SMS_CENTER_PASSWORD }} >> .env
 
-    - name: Build Docker image
+    - name: Build and push main_app Docker image
       run: |
-        docker-compose down
-        docker-compose build --no-cache -j 4
-        docker-compose up -d
+        docker build -t kirillka564/swipe_api:main_app-${{ steps.vars.outputs.version }} ./main_app
+        docker push kirillka564/swipe_api:main_app-${{ steps.vars.outputs.version }}
 
-    - name: Run tests (replace with your test command)
+    - name: Build and push socket_app Docker image
       run: |
-        # If you have a specific command to run tests, replace the echo command with it.
-        echo "Run your tests here. For example: docker-compose run --rm app your-test-command"
+        docker build -t kirillka564/swipe_api:socket_app-${{ steps.vars.outputs.version }} ./socket_app
+        docker push kirillka564/swipe_api:socket_app-${{ steps.vars.outputs.version }}
+
+    - name: Build and push push_app Docker image
+      run: |
+        docker build -t kirillka564/swipe_api:push_app-${{ steps.vars.outputs.version }} ./push_app
+        docker push kirillka564/swipe_api:push_app-${{ steps.vars.outputs.version }}
+
+    - name: Build and push admin_app Docker image
+      run: |
+        docker build -t kirillka564/swipe_api:admin_app-${{ steps.vars.outputs.version }} ./admin_app
+        docker push kirillka564/swipe_api:admin_app-${{ steps.vars.outputs.version }}
+
+    - name: Add server to known_hosts
+      run: |
+        mkdir -p ~/.ssh
+        ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
+
+    - name: Deploy to server using SSH action
+      uses: appleboy/ssh-action@master
+      with:
+        host: ${{ secrets.SERVER_HOST }}
+        username: ${{ secrets.SERVER_USERNAME }}
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        passphrase: ${{ secrets.SSH_PASSPHRASE }}
+        script: |
+          cd swipe_api
+          docker-compose pull
+          docker-compose up -d

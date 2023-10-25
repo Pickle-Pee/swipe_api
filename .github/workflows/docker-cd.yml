@@ -45,12 +45,25 @@ jobs:
         echo SMS_CENTER_LOGIN=${{ secrets.SMS_CENTER_LOGIN }} >> .env
         echo SMS_CENTER_PASSWORD=${{ secrets.SMS_CENTER_PASSWORD }} >> .env
 
-    - name: Build and push Docker image
+    - name: Build and push main_app Docker image
       run: |
-        docker-compose down
-        docker-compose build --no-cache -j 4
-        docker-compose up -d
-        docker-compose push
+        docker build -t kirillka564/swipe_api:main_app-${{ steps.vars.outputs.version }} ./main_app
+        docker push kirillka564/swipe_api:main_app-${{ steps.vars.outputs.version }}
+
+    - name: Build and push socket_app Docker image
+      run: |
+        docker build -t kirillka564/swipe_api:socket_app-${{ steps.vars.outputs.version }} ./socket_app
+        docker push kirillka564/swipe_api:socket_app-${{ steps.vars.outputs.version }}
+
+    - name: Build and push push_app Docker image
+      run: |
+        docker build -t kirillka564/swipe_api:push_app-${{ steps.vars.outputs.version }} ./push_app
+        docker push kirillka564/swipe_api:push_app-${{ steps.vars.outputs.version }}
+
+    - name: Build and push admin_app Docker image
+      run: |
+        docker build -t kirillka564/swipe_api:admin_app-${{ steps.vars.outputs.version }} ./admin_app
+        docker push kirillka564/swipe_api:admin_app-${{ steps.vars.outputs.version }}
 
     - name: Add server to known_hosts
       run: |
