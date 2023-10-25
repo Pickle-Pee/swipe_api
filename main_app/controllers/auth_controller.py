@@ -119,13 +119,12 @@ def send_verification_code(phone_number: str):
             temp_code = TemporaryCode(phone_number=phone_number, code=verification_code)
             db.add(temp_code)
             db.commit()
-
             smsc.send_sms(phone_number, f"Ваш код авторизации {verification_code}", sender="swipe_auth")
-
             return VerificationResponse(verification_code=verification_code)
         except Exception as e:
             print("Error sending verification code:", e)
             raise HTTPException(status_code=500, detail="Error sending verification code")
+
 
 
 @router.post("/register", response_model=TokenResponse, summary="Регистрация пользователя")

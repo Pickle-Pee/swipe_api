@@ -140,35 +140,40 @@ def get_chats(access_token: str = Depends(get_token)):
         return chat_responses
 
 
-@router.get("/{chat_id}", response_model=ChatDetailsResponse, summary="Получить детали чата")
-def get_chat_details(chat_id: int, access_token: str = Depends(get_token)):
+def modified_get_chat_details(chat_id: int, access_token: str = Depends(get_token)):
     with SessionLocal() as db:
         current_user_id = get_user_id_from_token(access_token)
 
-        # Проверяем, существует ли чат с данным ID
+        # Check if the chat with the given ID exists
         chat = db.query(Chat).filter(Chat.id == chat_id).first()
         if not chat:
             raise HTTPException(status_code=404, detail="Chat not found")
 
-        # Убедимся, что текущий пользователь является участником чата
+        # Ensure the current user is a participant of the chat
         if chat.user1_id != current_user_id and chat.user2_id != current_user_id:
             raise HTTPException(status_code=403, detail="Not authorized to access this chat")
 
-        # Получаем информацию о втором пользователе в чате
+        # Get information about the other user in the chat
         other_user_id = chat.user1_id if chat.user1_id != current_user_id else chat.user2_id
         user = db.query(User).filter(User.id == other_user_id).first()
 
-        # Вычисляем возраст пользователя
+        # Get the user's avatar from 'user_photos' table
+        user_avatar = db.query(UserPhoto).filter(
+            UserPhoto.user_id == other_user_id,
+            UserPhoto.is_avatar == True
+        ).first()
+
+        # Compute the user's age
         today = date.today()
         age = today.year - user.date_of_birth.year - ((today.month, today.day) < (user.date_of_birth.month,
                                                                                   user.date_of_birth.day))
 
-        # Формируем ответ
+        # Construct the response
         chat_details = ChatDetailsResponse(
             user_id=user.id,
             first_name=user.first_name,
             user_age=age,
-            avatar_url=user.avatar_url if user.avatar_url is not None else None,
+            avatar_url=user_avatar.photo_url if user_avatar else None,
             status=user.status if user.status is not None else None
         )
 
