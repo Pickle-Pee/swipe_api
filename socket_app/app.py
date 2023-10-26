@@ -487,6 +487,7 @@ async def send_date_invitation(sid, data):
 
     # Получаем sender_id из информации о подключении
     sender_info = next((info for info in connected_users.values() if info['sid'] == sid), None)
+
     if not sender_info:
         await sio.emit('error', {'error': 'Authentication failed'}, room=sid)
         return
@@ -513,9 +514,11 @@ async def send_date_invitation(sid, data):
         db.commit()
         socketio_logger.info(f"Date invitation from user ID {sender_id} to user ID {recipient_id} recorded in database")
 
-        recipient_info = connected_users.get(recipient_id)
+        sender = db.query(User).filter(User.id == sender_id).first()
+        sender_name = sender.first_name if sender else "Неизвестный пользователь"
 
-        # Отправляем уведомление адресату
+        # Отправляем уведомление адресату, если он онлайн
+        recipient_info = connected_users.get(recipient_id)
         if recipient_info:
             recipient_sid = recipient_info.get('sid')
             await sio.emit(
@@ -525,19 +528,34 @@ async def send_date_invitation(sid, data):
                 }, room=recipient_sid
             )
 
-            socketio_logger.info(
-                f"Preparing to send completer for date invitation from user ID {sender_id} to chat ID {chat_id}")
-
-            await sio.emit(
-                'completer', {
-                    'sender_id': sender_id,
-                    'status': 1,
-                    'chat_id': chat_id,
-                    'action': 'invitation_sent'
-                }, room=sid
+        # Отправляем пуш-уведомление
+        push_token = await get_user_push_token(recipient_id)
+        if push_token:
+            title = "Новое приглашение на свидание"
+            message_content = f"{sender_name} приглашает вас на свидание"
+            await send_push_notification(
+                push_token,
+                title,
+                message_content,
+                data={
+                    'invitation_type': 'date'
+                },
+                aps={
+                    "content-available": 1
+                }
             )
-            socketio_logger.info(f"Date invitation sent to recipient ID {recipient_id} via socket")
+            socketio_logger.info(f"Push notification sent to recipient ID {recipient_id} with token {push_token}")
 
+        # Отправляем подтверждение отправителю
+        await sio.emit(
+            'completer', {
+                'sender_id': sender_id,
+                'status': 1,
+                'chat_id': chat_id,
+                'action': 'invitation_sent'
+            }, room=sid
+        )
+        socketio_logger.info(f"Date invitation sent to recipient ID {recipient_id} via socket")
 
 
 @sio.event
@@ -557,6 +575,10 @@ async def respond_date_invitation(sid, data):
     socketio_logger.info(f"User with ID {sender_id} responded to date invitation in chat ID {chat_id} with response: {response}")
 
     with SessionLocal() as db:
+        # Получаем имя отправителя из базы данных
+        sender = db.query(User).filter(User.id == sender_id).first()
+        sender_name = sender.name if sender else "Неизвестный пользователь"
+
         chat = db.query(Chat).filter(Chat.id == chat_id).first()
         if chat is None:
             await sio.emit('error', {'error': f'Chat with ID {chat_id} not found'}, room=sid)
@@ -577,12 +599,36 @@ async def respond_date_invitation(sid, data):
         if recipient_info:
             recipient_sid = recipient_info.get('sid')
             await sio.emit(
-                'date_response', {
+                'date_invitation', {
                     'chat_id': chat_id,
                     'sender_id': sender_id,
                     'response': response
                 }, room=recipient_sid
             )
+
+            # Отправляем пуш-уведомление инициатору приглашения
+            push_token = await get_user_push_token(recipient_id)
+            if push_token:
+                title = "Ответ на ваше приглашение"
+                if response == "accepted":
+                    message_content = f"{sender_name} принял ваше приглашение на свидание"
+                elif response == "declined":
+                    message_content = f"{sender_name} отклонил ваше приглашение на свидание"
+                else:
+                    message_content = "Неизвестный ответ на ваше приглашение"
+                await send_push_notification(
+                    push_token,
+                    title,
+                    message_content,
+                    data={
+                        'response_type': 'date'
+                    },
+                    aps={
+                        "content-available": 1
+                    }
+                )
+                socketio_logger.info(f"Push notification sent to initiator ID {recipient_id} with token {push_token}")
+
             await sio.emit(
                 'completer', {
                     'sender_id': sender_id,
@@ -593,7 +639,6 @@ async def respond_date_invitation(sid, data):
                 }, room=sid
             )
             socketio_logger.info(f"Date response {response} sent to initiator ID {recipient_id} via socket")
-
 
 
 @sio.event
