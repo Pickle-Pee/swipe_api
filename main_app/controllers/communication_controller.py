@@ -119,6 +119,12 @@ def get_chats(access_token: str = Depends(get_token)):
                 ((Message.deleted_for_user2.is_(False)) & (chat.user2_id == current_user))
             ).count()
 
+            date_invitations_for_current_chat = [
+                DateInvitationResponse(
+                    sender_id=invite.sender_id,
+                    status=invite.status
+                ) for invite in date_invitations if invite.chat_id == chat.id]
+
             chat_response = ChatPersonResponse(
                 chat_id=chat.id,
                 user=user2_data,
@@ -127,15 +133,9 @@ def get_chats(access_token: str = Depends(get_token)):
                 unread_count=unread_count,
                 last_message_status=last_message_status,
                 last_message_sender_id=last_message_sender_id,
-                last_message_type=message_type
+                last_message_type=message_type,
+                date_invitations=date_invitations_for_current_chat
             )
-
-            for chat_response in chat_responses:
-                chat_response.date_invitations = [
-                    DateInvitationResponse(
-                        sender_id=invite.sender_id,
-                        status=invite.status) for invite in date_invitations]
-
 
             chat_responses.append(chat_response)
 
