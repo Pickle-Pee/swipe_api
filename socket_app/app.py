@@ -613,7 +613,7 @@ async def respond_date_invitation(sid, data):
                 if response == "accepted":
                     message_content = f"{sender_name} принял ваше приглашение на свидание"
                 elif response == "declined":
-                    message_content = f"{sender_name} отклонил ваше приглашение на свидание"
+                    message_content = f"Пользователь {sender_name} отклонил ваше приглашение на свидание"
                 else:
                     message_content = "Неизвестный ответ на ваше приглашение"
                 await send_push_notification(
