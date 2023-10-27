@@ -1,6 +1,19 @@
 name: Docker CI
 
-on: [push, pull_request]
+on:
+  push:
+    paths:
+      - 'main_app/**'
+      - 'socket_app/**'
+      - 'push_app/**'
+      - 'admin_app/**'
+  pull_request:
+    paths:
+      - 'main_app/**'
+      - 'socket_app/**'
+      - 'push_app/**'
+      - 'admin_app/**'
+
 
 jobs:
   build:
@@ -12,6 +25,14 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
+
+    - name: Cache Python dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
 
     - name: Create .env file
       run: |
@@ -38,9 +59,18 @@ jobs:
         echo SMS_CENTER_LOGIN=${{ secrets.SMS_CENTER_LOGIN }} >> .env
         echo SMS_CENTER_PASSWORD=${{ secrets.SMS_CENTER_PASSWORD }} >> .env
 
+    - name: Cache Docker layers
+      uses: actions/cache@v3
+      with:
+        path: /tmp/docker-layers
+        key: ${{ runner.os }}-docker-${{ matrix.service }}-${{ github.sha }}
+        restore-keys: |
+          ${{ runner.os }}-docker-${{ matrix.service }}-
+
     - name: Build ${{ matrix.service }} Docker image
       run: |
-        docker build -t kirillka564/swipe_api:${{ matrix.service }} ./${{ matrix.service }}
+        docker build --cache-from=/tmp/docker-layers -t kirillka564/swipe_api:${{ matrix.service }} ./${{ matrix.service }}
+        docker save -o /tmp/docker-layers ./${{ matrix.service }}
 
     - name: Run tests (replace with your test command)
       run: |
