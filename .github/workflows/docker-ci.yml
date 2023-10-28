@@ -63,17 +63,22 @@ jobs:
     - name: Cache Docker layers
       uses: actions/cache@v3
       with:
-        path: /tmp/docker-layers
+        path: /tmp/docker-layers.tar
         key: ${{ runner.os }}-docker-${{ matrix.service }}-${{ github.sha }}
         restore-keys: |
           ${{ runner.os }}-docker-${{ matrix.service }}-
 
     - name: Build ${{ matrix.service }} Docker image
       run: |
-        docker build --cache-from=/tmp/docker-layers -t kirillka564/swipe_api:${{ matrix.service }} ./${{ matrix.service }}
-        docker save -o /tmp/docker-layers ./${{ matrix.service }}
+        # Загружаем слои из кэша, если они существуют
+        if [ -f /tmp/docker-layers.tar ]; then
+            docker load -i /tmp/docker-layers.tar
+        fi
+        
+        docker build --cache-from=docker.io/kirillka564/swipe_api:${{ matrix.service }} -t kirillka564/swipe_api:${{ matrix.service }} ./${{ matrix.service }}
+        docker save kirillka564/swipe_api:${{ matrix.service }} > /tmp/docker-layers.tar
 
-    - name: Run tests (replace with your test command)
+    - name: Run tests
       run: |
         # If you have a specific command to run tests, replace the echo command with it.
         echo "Run your tests here. For example: docker-compose run --rm app your-test-command"
