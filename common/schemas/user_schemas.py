@@ -133,3 +133,19 @@ class UserPhotosResponse(BaseModel):
 class AddGeolocationRequest(BaseModel):
     latitude: float
     longitude: float
+
+class UserResponseAdmin(BaseModel):
+    id: int
+    phone_number: int
+    created_at: datetime
+    updated_at: datetime
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    date_of_birth: Optional[date] = None
+    gender: Optional[str] = None
+    verify: str
+    is_subscription: bool
+    city_name: Optional[str] = None
+    about_me: Optional[str] = None
+    status: Optional[str] = None
+    deleted: Optional[bool]

@@ -27,13 +27,13 @@ async def login_admin(form_data: OAuth2PasswordRequestForm = Depends()):
         return {"access_token": access_token, "token_type": "bearer"}
 
 
-@app.get("/users", response_model=PersonalUserDataResponse)
+@app.get("/users", response_model=UserResponseAdmin)
 async def get_all_users():
     with SessionLocal() as db:
         users = db.query(User).all()
         if not users:
             raise HTTPException(status_code=404, detail="Users not found")
-        return PersonalUserDataResponse(users=users)
+        return UserResponseAdmin(users=users)
 
 
 if __name__ == "__main__":

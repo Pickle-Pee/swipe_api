@@ -41,5 +41,5 @@ from .user_schemas import (
     InterestResponseUser,
     AddTokenRequest,
     AddGeolocationRequest,
-
+    UserResponseAdmin
 )
