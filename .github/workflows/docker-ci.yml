@@ -14,7 +14,6 @@ on:
       - 'push_app/**'
       - 'admin_app/**'
 
-
 jobs:
   build:
     name: Build ${{ matrix.service }} image
