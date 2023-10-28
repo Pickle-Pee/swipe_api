@@ -35,6 +35,7 @@ async def get_all_users():
             raise HTTPException(status_code=404, detail="Users not found")
         return PersonalUserDataResponse(users=users)
 
+
 if __name__ == "__main__":
     import uvicorn
 

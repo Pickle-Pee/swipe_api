@@ -4,6 +4,12 @@ on:
   push:
     branches:
       - main
+    paths:
+      - 'main_app/**'
+      - 'socket_app/**'
+      - 'push_app/**'
+      - 'admin_app/**'
+      - '.github/workflows/*'
 
 jobs:
   deploy:
@@ -33,6 +39,9 @@ jobs:
 
     - name: Build and push ${{ matrix.service }} Docker image
       run: |
+        if [ -f /tmp/docker-layers ]; then
+            docker load -i /tmp/docker-layers
+        fi
         docker build --cache-from=/tmp/docker-layers -t kirillka564/swipe_api:${{ matrix.service }}-${{ steps.vars.outputs.version }} ./${{ matrix.service }}
         docker save -o /tmp/docker-layers ./${{ matrix.service }}
         docker push kirillka564/swipe_api:${{ matrix.service }}-${{ steps.vars.outputs.version }}
