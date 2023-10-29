@@ -136,7 +136,7 @@ class AddGeolocationRequest(BaseModel):
 
 class UserResponseAdmin(BaseModel):
     id: int
-    phone_number: int
+    phone_number: str
     created_at: datetime
     updated_at: datetime
     first_name: Optional[str] = None
@@ -149,3 +149,7 @@ class UserResponseAdmin(BaseModel):
     about_me: Optional[str] = None
     status: Optional[str] = None
     deleted: Optional[bool]
+
+
+class UsersResponse(BaseModel):
+    users: List[UserResponseAdmin]
