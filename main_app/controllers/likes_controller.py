@@ -3,7 +3,7 @@ from typing import List
 from sqlalchemy.orm import joinedload
 from fastapi import Depends, APIRouter, HTTPException
 from config import SessionLocal
-from common.models import Like, Dislike, Favorite, User
+from common.models import Like, Dislike, Favorite, User, UserPhoto, City
 from common.schemas import FavoriteCreate, UserLikesResponse
 from common.utils import get_token, get_user_id_from_token
 
@@ -83,30 +83,89 @@ def get_favorites(access_token: str = Depends(get_token)):
     with SessionLocal() as db:
         current_user_id = get_user_id_from_token(access_token)
         favorites = db.query(User).options(joinedload(User.interests)).join(
-            Favorite, User.id == Favorite.favorite_user_id).filter(
-            Favorite.user_id == current_user_id).all()
-        return favorites
+            Favorite, User.id == Favorite.favorite_user_id
+        ).filter(
+            Favorite.user_id == current_user_id
+        ).all()
+
+        response = []
+        for user in favorites:
+            avatar_url = db.query(UserPhoto.photo_url).filter(
+                UserPhoto.user_id == user.id, UserPhoto.is_avatar == True
+            ).first()
+            city_name = db.query(City.city_name).filter(City.id == user.city_id).first()
+            response.append(
+                {
+                    "id": user.id,
+                    "first_name": user.first_name,
+                    "avatar_url": avatar_url[0] if avatar_url else None,
+                    "date_of_birth": user.date_of_birth,
+                    "city_name": city_name[0] if city_name else None,
+                    # "is_favorite": user.is_favorite,
+                    "about_me": user.about_me,
+                    "status": user.status
+                }
+            )
+        return response
 
 
 @router.get("/liked_me", response_model=List[UserLikesResponse], summary="Список пользователей, лайкнувших меня")
 def get_liked_by(access_token: str = Depends(get_token)):
     with SessionLocal() as db:
         current_user_id = get_user_id_from_token(access_token)
-        liked_by_users = db.query(User).join(Like, User.id == Like.user_id).filter(Like.liked_user_id
-                                                                                   == current_user_id).all()
-        return liked_by_users
+        liked_by_users = db.query(User).join(Like, User.id == Like.user_id).filter(
+            Like.liked_user_id == current_user_id).all()
 
 
-@router.get("/liked_users", response_model=List[UserLikesResponse], summary="Список пользователей, которых лайнкул я")
+        response = []
+        for user in liked_by_users:
+            avatar_url = db.query(UserPhoto.photo_url).filter(
+                UserPhoto.user_id == user.id, UserPhoto.is_avatar == True).first()
+            city_name = db.query(City.city_name).filter(City.id == user.city_id).first()
+            response.append(
+                {
+                    "id": user.id,
+                    "first_name": user.first_name,
+                    "avatar_url": avatar_url[0] if avatar_url else None,
+                    "date_of_birth": user.date_of_birth,
+                    "city_name": city_name,
+                    # "is_favorite": user.is_favorite,
+                    "about_me": user.about_me,
+                    "status": user.status
+                }
+            )
+        return response
+
+
+@router.get("/liked_users", response_model=List[UserLikesResponse], summary="Список пользователей, которых лайкнул я")
 def get_liked_users(access_token: str = Depends(get_token)):
     with SessionLocal() as db:
         current_user_id = get_user_id_from_token(access_token)
 
         # Запрос на получение пользователей, которых текущий пользователь лайкнул
         liked_users = db.query(User).join(Like, User.id == Like.liked_user_id).filter(
-            Like.user_id == current_user_id).all()
+            Like.user_id == current_user_id
+            ).all()
 
-        return liked_users
+        response = []
+        for user in liked_users:
+            avatar_url = db.query(UserPhoto.photo_url).filter(
+                UserPhoto.user_id == user.id, UserPhoto.is_avatar == True
+                ).first()
+            city_name = db.query(City.city_name).filter(City.id == user.city_id).first()
+            response.append(
+                {
+                    "id": user.id,
+                    "first_name": user.first_name,
+                    "avatar_url": avatar_url[0] if avatar_url else None,
+                    "date_of_birth": user.date_of_birth,
+                    "city_name": city_name[0] if city_name else None,
+                    # "is_favorite": user.is_favorite,
+                    "about_me": user.about_me,
+                    "status": user.status
+                }
+            )
+        return response
 
 
 @router.delete("/remove_from_favorites/{user_id}", summary="Удалить из избранного")

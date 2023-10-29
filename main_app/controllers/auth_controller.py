@@ -278,8 +278,14 @@ def who_am_i(access_token: str = Depends(get_token)):
             raise HTTPException(status_code=401, detail="Invalid token")
 
         user = db.query(User).filter(User.id == user_id).first()
+
         if user:
-            return user
+            return {
+                "id": user.id,
+                "is_subscription": user.is_subscription,
+                "created_at": user.created_at,
+                "updated_at": user.updated_at
+            }
         else:
             raise HTTPException(status_code=404, detail="Пользователь не найден")
 

@@ -4,7 +4,7 @@ import pandas as pd
 from fastapi import HTTPException, APIRouter, Depends
 from typing import List
 from datetime import datetime
-from common.models import City, Interest, UserInterest, User
+from common.models import City, Interest, UserInterest, User, UserPhoto
 from common.schemas import MatchResponse
 from common.utils.auth_utils import get_token, get_user_id_from_token
 from config import SessionLocal
@@ -28,7 +28,6 @@ def find_matches(access_token: str = Depends(get_token)):
         user_interests = db.query(Interest.interest_text).join(UserInterest).filter(UserInterest.user_id == user_id).all()
         user_interests = [interest[0] for interest in user_interests]
 
-
         data = pd.DataFrame([{
             'first_name': user.first_name,
             'age': (datetime.now().date() - user.date_of_birth).days // 365,
@@ -49,15 +48,22 @@ def find_matches(access_token: str = Depends(get_token)):
 
         predictions = model.predict(data)
         matched_users = [users[i] for i in range(len(users)) if predictions[i] == 1]
-        response = [
-            MatchResponse(
-                user_id=user.id,
-                first_name=user.first_name,
-                date_of_birth=user.date_of_birth,
-                gender=user.gender,
-                city_name=user.city.city_name,
-                interests=[interest.interest.interest_text for interest in user.interests]
-            ) for user in matched_users
-        ]
+
+        response = []
+        for user in matched_users:
+            avatar_query = db.query(UserPhoto.photo_url).filter(UserPhoto.user_id == user.id, UserPhoto.is_avatar == True).first()
+            avatar_url = avatar_query[0] if avatar_query else None
+            response.append(
+                MatchResponse(
+                    user_id=user.id,
+                    first_name=user.first_name,
+                    date_of_birth=user.date_of_birth,
+                    gender=user.gender,
+                    city_name=user.city.city_name if user.city else None,
+                    interests=[interest.interest.interest_text for interest in user.interests],
+                    avatar_url=avatar_url
+                )
+            )
 
     return response
+
