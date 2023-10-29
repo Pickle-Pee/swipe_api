@@ -58,7 +58,7 @@ class UserDataResponse(BaseModel):
     match_percentage: Optional[int] = None
 
 
-class PersonalUserData(BaseModel):
+class PersonalUserDataResponse(BaseModel):
     id: int
     first_name: Optional[str] = None
     last_name: Optional[str] = None
@@ -71,10 +71,6 @@ class PersonalUserData(BaseModel):
     avatar_url: Optional[str] = None
     interests: Optional[List[InterestResponseUser]] = None
     deleted: Optional[bool]
-
-
-class PersonalUserDataResponse(BaseModel):
-    users: List[PersonalUserData]
 
 
 class UserLikesResponse(BaseModel):
