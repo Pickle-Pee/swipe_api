@@ -131,7 +131,7 @@ async def send_message(sid, data):
         return
 
     sender_id = sender_info.get('user_id')
-    socketio_logger.info(f"User with ID {sender_id} is sending a message to chat ID {chat_id}")  # Логирование отправки сообщения
+    socketio_logger.info(f"User with ID {sender_id} is sending a message to chat ID {chat_id}")
 
     message_type = data.get('message_type', 'text')
     media_urls = data.get('media_urls', [])
@@ -438,29 +438,27 @@ async def delete_chat(sid, data):
 async def update_verification_status(sid, data):
     logger.info(f"Received event data: {data}")
 
-
     if isinstance(data, str):
         data = json.loads(data)
 
     user_id = data.get('user_id')
     status = data.get('status')
 
-    user_sid = connected_users.get(user_id)
-
-    if user_sid:
-        await sio.emit('verification_update', {'status': status}, room=user_sid)
-    else:
-        print(f"User with ID {user_id} is not connected.")
-
     if not user_id or not status:
         logger.error("Missing data")
         await sio.emit('error', {'error': 'Missing data'}, room=sid)
         return
 
+    user_sid = connected_users.get(user_id)
+
+    if not user_sid:
+        logger.error(f"User with ID {user_id} is not connected.")
+        return
+
     user_info = next((info for info in connected_users.values() if info['user_id'] == user_id), None)
 
     if not user_info:
-        logger.error("User not found")
+        logger.error("User not found in connected users list")
         await sio.emit('error', {'error': 'User not found'}, room=sid)
         return
 
@@ -474,8 +472,8 @@ async def update_verification_status(sid, data):
         user.is_verified = status == 'approved'
         db.commit()
 
-        logger.info(f"Emitting verification_update with status: {status} to sid: {user_info['sid']}")
-        await sio.emit('verification_update', {'status': status}, room=user_info['sid'])
+        logger.info(f"Emitting verification_update with status: {status} to sid: {user_sid}")
+        await sio.emit('verification_update', {'status': status}, room=user_sid)
 
 
 @sio.event
@@ -525,6 +523,8 @@ async def send_date_invitation(sid, data):
                 'date_invitation', {
                     'chat_id': chat_id,
                     'sender_id': sender_id,
+                    'action': 'invitation_sent',
+                    'status': 'pending'
                 }, room=recipient_sid
             )
 
@@ -548,9 +548,9 @@ async def send_date_invitation(sid, data):
 
         # Отправляем подтверждение отправителю
         await sio.emit(
-            'completer', {
+            'date_invitation', {
                 'sender_id': sender_id,
-                'status': 1,
+                'status': 'pending',
                 'chat_id': chat_id,
                 'action': 'invitation_sent'
             }, room=sid
@@ -628,16 +628,6 @@ async def respond_date_invitation(sid, data):
                     }
                 )
                 socketio_logger.info(f"Push notification sent to initiator ID {recipient_id} with token {push_token}")
-
-            await sio.emit(
-                'completer', {
-                    'sender_id': sender_id,
-                    'status': 1,
-                    'chat_id': chat_id,
-                    'action': 'invitation_response',
-                    'response': response
-                }, room=sid
-            )
             socketio_logger.info(f"Date response {response} sent to initiator ID {recipient_id} via socket")
 
 

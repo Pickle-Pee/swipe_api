@@ -19,6 +19,7 @@ async def send_push(msg: PushMessage):
             notification=messaging.Notification(
                 title=msg.title,
                 body=msg.body),
+            data=msg.data,
             token=msg.token)
 
         response = messaging.send(message)

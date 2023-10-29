@@ -20,7 +20,7 @@ class User(Base):
     last_name = Column(String)
     date_of_birth = Column(Date)
     gender = Column(String)
-    verify = Column(String, default=str(VerificationStatus.in_progress))
+    verify = Column(String, default=str(VerificationStatus.denied))
     is_subscription = Column(Boolean)
     city_id = Column(Integer, ForeignKey('cities.id'))
     about_me = Column(Text)

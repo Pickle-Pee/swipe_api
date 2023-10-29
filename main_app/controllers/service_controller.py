@@ -288,16 +288,19 @@ async def update_verification_status(
 
         title = ""
         body = ""
+        data = {}
         if verification_update.status == VerificationStatus.approved:
             user.verify = "approved"
             user.is_verified = True
             title = "Успешная верификация!"
             body = "Вы успешно верифицированы! Перезайдите в приложение."
+            data = {"status": verification_update.status.value}
         elif verification_update.status == VerificationStatus.denied:
             user.verify = "denied"
             user.is_verified = False
             title = "Неудачная верификация!"
             body = "Мы не смогли вас верифицировать. Отправьте нам фото для повторной верификации."
+            data = {"status": verification_update.status.value}
         else:
             logger.error("Invalid status")
             raise HTTPException(status_code=400, detail="Invalid status")
@@ -307,25 +310,30 @@ async def update_verification_status(
         # Send push notification here
         push_token = await get_user_push_token(user_id)
         if push_token:
-            await send_push_notification(push_token, title, body, data={}, aps={})
+            logger.info(data)
+            await send_push_notification(push_token, title, body, data, aps={})
+        else:
+            logger.error("Push token not found")
 
-    logger.info(f"Sending event to socket: {verification_update.status.value}")
+    # TODO: Разобраться с отправкой ивента на сокет
 
-    event_data = {
-        "user_id": user_id,
-        "status": f"{verification_update.status.value}"
-    }
-
-    try:
-        socketio_url = 'http://socket_app:1025?no-auth=True'
-        event_name = 'update_verification_status'
-
-        await send_event_to_socketio(socketio_url, event_name, event_data)
-        logger.info("Event sent to socket successfully")
-        logger.info(f"Event data: {event_data}, Event name: {event_name}")
-    except Exception as e:
-        logger.error(f"Error sending event to socket: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+    # logger.info(f"Sending event to socket: {verification_update.status.value}")
+    #
+    # event_data = {
+    #     "user_id": user_id,
+    #     "status": f"{verification_update.status.value}"
+    # }
+    #
+    # try:
+    #     socketio_url = 'http://socket_app:1025?no-auth=True'
+    #     event_name = 'update_verification_status'
+    #
+    #     await send_event_to_socketio(socketio_url, event_name, event_data)
+    #     logger.info("Event sent to socket successfully")
+    #     logger.info(f"Event data: {event_data}, Event name: {event_name}")
+    # except Exception as e:
+    #     logger.error(f"Error sending event to socket: {e}")
+    #     raise HTTPException(status_code=500, detail=str(e))
 
     return JSONResponse(
         content={

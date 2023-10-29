@@ -11,7 +11,7 @@ class UserCreate(BaseModel):
     last_name: str
     date_of_birth: date
     gender: str
-    verify: Literal["denied", "approved", "in_progress"] = Field(default="in_progress")
+    verify: Literal["denied", "approved", "in_progress"] = Field(default="denied")
     city_name: str
     status: str = "offline"
 

@@ -1,6 +1,6 @@
 import datetime
 import enum
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 
 from pydantic import BaseModel
 
@@ -84,3 +84,4 @@ class PushMessage(BaseModel):
     token: str
     title: str
     body: str
+    data: Dict[str, Any]
