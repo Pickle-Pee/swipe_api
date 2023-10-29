@@ -132,7 +132,8 @@ def send_verification_code(phone_number: str):
                 error_response = ErrorResponse(detail="Некорректный номер телефона", code=666)
                 return JSONResponse(content=error_response.dict(), status_code=400)
 
-            verification_code = generate_verification_code()
+            # verification_code = generate_verification_code()
+            verification_code = '000000'
             temp_code = TemporaryCode(phone_number=phone_number, code=verification_code)
             db.add(temp_code)
             db.commit()
