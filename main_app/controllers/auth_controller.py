@@ -283,6 +283,7 @@ def who_am_i(access_token: str = Depends(get_token)):
             return {
                 "id": user.id,
                 "is_subscription": user.is_subscription,
+                "gender": user.gender,
                 "created_at": user.created_at,
                 "updated_at": user.updated_at
             }

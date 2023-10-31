@@ -34,6 +34,7 @@ class UserResponse(UserCreate):
 
 class UserIdResponse(BaseModel):
     id: int
+    gender: str
     is_subscription: bool
     created_at: datetime
     updated_at: datetime
