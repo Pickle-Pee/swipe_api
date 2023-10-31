@@ -5,7 +5,7 @@ import random
 from fastapi import HTTPException, APIRouter, Depends, status
 from fastapi.responses import Response
 from typing import List, Optional
-from common.models import City, User, PushTokens, UserPhoto, UserGeolocation, Interest, UserInterest
+from common.models import City, User, PushTokens, UserPhoto, UserGeolocation, Interest, UserInterest, Favorite
 from common.utils import (
     get_neural_network_match_percentage,
     get_token,
@@ -86,6 +86,9 @@ def get_user(user_id: Optional[int] = None, access_token: str = Depends(get_toke
 
                 interests = [InterestResponseUser(interest_id=id, interest_text=text) for id, text in interests_data]
 
+                is_favorite = db.query(Favorite).filter(
+                    Favorite.user_id == current_user.id, Favorite.favorite_user_id == user_id).first() is not None
+
                 return {
                     "id": user.id,
                     "first_name": user.first_name if user.first_name else None,
@@ -98,6 +101,7 @@ def get_user(user_id: Optional[int] = None, access_token: str = Depends(get_toke
                     "city_name": db.query(City.city_name).filter(
                         City.id == user.city_id
                         ).scalar() if user.city_id else None,
+                    "is_favorite": is_favorite,
                     "interests": interests,
                     "match_percentage": match_percentage
                 }

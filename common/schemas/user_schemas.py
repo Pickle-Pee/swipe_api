@@ -52,7 +52,7 @@ class UserDataResponse(BaseModel):
     gender: Optional[str] = None
     is_subscription: bool
     city_name: Optional[str] = None
-    is_favorite: Optional[bool] = False
+    is_favorite: Optional[bool]
     about_me: Optional[str] = None
     status: Optional[str] = None
     avatar_url: Optional[str] = None
