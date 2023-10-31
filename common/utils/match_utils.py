@@ -8,6 +8,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.preprocessing import MinMaxScaler
 from common.models import City, Interest, UserInterest
 from config import SessionLocal
+from sqlalchemy import text
 
 model = joblib.load('/app/common/utils/best_model.pkl')
 
@@ -62,3 +63,13 @@ def get_neural_network_match_percentage(user1, user2):
         return match_percentage
 
 warnings.filterwarnings(action='ignore', category=DataConversionWarning)
+
+def execute_sql(query: str, params: dict) -> list:
+    """
+    Выполняет SQL-запрос и возвращает результаты в виде списка словарей.
+    """
+    with SessionLocal() as db:
+        result = db.execute(text(query), params)
+        # Преобразование результатов в список словарей
+        keys = result.keys()
+        return [dict(zip(keys, row)) for row in result.fetchall()]

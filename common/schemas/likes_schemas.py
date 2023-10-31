@@ -23,3 +23,4 @@ class MatchResponse(BaseModel):
     status: Optional[str] = None
     city_name: Optional[str] = None
     avatar_url: Optional[str] = None
+    match_percentage: Optional[float] = None
