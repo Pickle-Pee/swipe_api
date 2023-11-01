@@ -34,6 +34,7 @@ jobs:
         key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
         restore-keys: |
           ${{ runner.os }}-pip-
+    
 
     - name: Create .env file
       run: |
@@ -70,12 +71,11 @@ jobs:
 
     - name: Build ${{ matrix.service }} Docker image
       run: |
-        # Загружаем слои из кэша, если они существуют
         if [ -f /tmp/docker-layers.tar ]; then
             docker load -i /tmp/docker-layers.tar
         fi
         
-        docker build --cache-from=docker.io/kirillka564/swipe_api:${{ matrix.service }} -t kirillka564/swipe_api:${{ matrix.service }} ./${{ matrix.service }}
+        docker build --cache-from=kirillka564/swipe_api:${{ matrix.service }} -t kirillka564/swipe_api:${{ matrix.service }} -f ./${{ matrix.service }}/Dockerfile .
         docker save kirillka564/swipe_api:${{ matrix.service }} > /tmp/docker-layers.tar
 
     - name: Run tests
