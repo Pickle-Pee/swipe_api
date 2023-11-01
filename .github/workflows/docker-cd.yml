@@ -39,11 +39,7 @@ jobs:
 
     - name: Build and push ${{ matrix.service }} Docker image
       run: |
-        docker build --cache-from=docker.io/kirillka564/swipe_api:${{ matrix.service }}-${{ steps.vars.outputs.version }} -t kirillka564/swipe_api:${{ matrix.service }}-${{ steps.vars.outputs.version }} ./${{ matrix.service }}
-        
-        # Сохраняем только конкретные слои образа
-        docker save kirillka564/swipe_api:${{ matrix.service }}-${{ steps.vars.outputs.version }} > /tmp/docker-layers.tar
-        
+        docker build --cache-from=docker.io/kirillka564/swipe_api:${{ matrix.service }}-${{ steps.vars.outputs.version }} -t kirillka564/swipe_api:${{ matrix.service }}-${{ steps.vars.outputs.version }} -f ./${{ matrix.service }}/Dockerfile .
         docker push kirillka564/swipe_api:${{ matrix.service }}-${{ steps.vars.outputs.version }}
 
     - name: Cache Docker layers
@@ -53,6 +49,7 @@ jobs:
         key: ${{ runner.os }}-docker-${{ matrix.service }}-${{ steps.vars.outputs.version }}
         restore-keys: |
           ${{ runner.os }}-docker-${{ matrix.service }}-
+
 
   deploy_to_server:
     needs: deploy
