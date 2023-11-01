@@ -196,7 +196,7 @@ async def send_message(sid, data):
                     title,
                     message_content,
                     data={
-                        'message_type': message_type
+                        'type': 'message'
                     },
                     aps={
                         "content-available": 1
