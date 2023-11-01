@@ -44,6 +44,23 @@ async def login_admin(form_data: OAuth2PasswordRequestForm = Depends()):
         return {"access_token": access_token, "token_type": "bearer"}
 
 
+@app.post("/admin/delete", summary="Авторизация администратора")
+async def login_admin(form_data: OAuth2PasswordRequestForm = Depends()):
+    with SessionLocal() as db:
+        admin = get_admin_by_username(db, username=form_data.username)
+
+        if not admin or not verify_password(form_data.password, admin.hashed_password):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Incorrect username or password",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        # Создаем токен доступа для администратора
+        access_token = create_access_token(data={"sub": admin.username, "admin_id": admin.id})
+        return {"access_token": access_token, "token_type": "bearer"}
+
+
 @app.get("/users", response_model=UsersResponse)
 async def get_all_users():
     with SessionLocal() as db:
