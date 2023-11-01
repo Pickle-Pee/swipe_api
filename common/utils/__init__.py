@@ -14,6 +14,6 @@ from .crud import (
     delete_user_and_related_data,
     get_admin_by_username
 )
-from .match_utils import get_neural_network_match_percentage, execute_sql
+from .match_utils import execute_sql
 from .service_utils import send_push_notification, send_event_to_socketio, security
 from .user_utils import get_user_push_token, get_user_name, get_current_user

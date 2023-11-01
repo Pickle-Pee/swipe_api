@@ -5,9 +5,11 @@ import random
 from fastapi import HTTPException, APIRouter, Depends, status
 from fastapi.responses import Response
 from typing import List, Optional
+
+from sqlalchemy import func
+
 from common.models import City, User, PushTokens, UserPhoto, UserGeolocation, Interest, UserInterest, Favorite
 from common.utils import (
-    get_neural_network_match_percentage,
     get_token,
     get_user_id_from_token,
     delete_user_and_related_data
@@ -26,6 +28,7 @@ from config import SessionLocal, logger
 
 router = APIRouter(prefix="/user", tags=["User Controller"])
 
+MAX_DISTANCE = 100000
 
 @router.get("/me", response_model=PersonalUserDataResponse, summary="Получение информации о текущем пользователе")
 async def get_current_user(access_token: str = Depends(get_token)):
@@ -78,7 +81,39 @@ def get_user(user_id: Optional[int] = None, access_token: str = Depends(get_toke
                 current_user_id = get_user_id_from_token(access_token)
                 current_user = db.query(User).filter(User.id == current_user_id).first()
 
-                match_percentage = get_neural_network_match_percentage(current_user, user)
+                # Рассчитываем общее количество интересов между пользователями
+                common_interests_count = db.query(UserInterest).filter(
+                    UserInterest.user_id == current_user_id,
+                    UserInterest.interest_id.in_(
+                        db.query(UserInterest.interest_id).filter(UserInterest.user_id == user_id)
+                    )
+                ).count()
+
+                # Рассчитываем процент общих интересов
+                interests_percentage = (common_interests_count / max(len(current_user.interests), 1)) * 100
+
+                # Задаем начальное значение distance_percentage
+                distance_percentage = 0  # Или любое другое значение по умолчанию
+
+                # Убедитесь, что у пользователя есть геолокационные данные, прежде чем пытаться их получить
+                if user.user_geolocation and current_user.user_geolocation:
+                    user_longitude = user.user_geolocation.longitude
+                    user_latitude = user.user_geolocation.latitude
+                    current_user_longitude = current_user.user_geolocation.longitude
+                    current_user_latitude = current_user.user_geolocation.latitude
+
+                    # Рассчитываем расстояние
+                    distance = db.query(
+                        func.ST_Distance_Sphere(
+                            func.ST_MakePoint(current_user_longitude, current_user_latitude),
+                            func.ST_MakePoint(user_longitude, user_latitude)
+                        )
+                    ).scalar()
+                    # Обновляем значение distance_percentage на основе расчета
+                    distance_percentage = 100 - (distance / MAX_DISTANCE * 100) if distance <= MAX_DISTANCE else 0
+
+                # Рассчитываем общий процент совпадения
+                match_percentage = (interests_percentage + distance_percentage) / 2
 
                 interests_data = db.query(Interest.id, Interest.interest_text).join(
                     UserInterest, UserInterest.interest_id == Interest.id
@@ -87,28 +122,27 @@ def get_user(user_id: Optional[int] = None, access_token: str = Depends(get_toke
                 interests = [InterestResponseUser(interest_id=id, interest_text=text) for id, text in interests_data]
 
                 is_favorite = db.query(Favorite).filter(
-                    Favorite.user_id == current_user.id, Favorite.favorite_user_id == user_id).first() is not None
+                    Favorite.user_id == current_user.id, Favorite.favorite_user_id == user_id
+                ).first() is not None
 
-                return {
-                    "id": user.id,
-                    "first_name": user.first_name if user.first_name else None,
-                    "last_name": user.last_name if user.last_name else None,
-                    "date_of_birth": user.date_of_birth if user.date_of_birth else None,
-                    "gender": user.gender if user.gender else None,
-                    "is_subscription": user.is_subscription,
-                    "about_me": user.about_me,
-                    "status": user.status,
-                    "city_name": db.query(City.city_name).filter(
-                        City.id == user.city_id
-                        ).scalar() if user.city_id else None,
-                    "is_favorite": is_favorite,
-                    "interests": interests,
-                    "match_percentage": match_percentage
-                }
+                return UserDataResponse(
+                    id=user.id,
+                    first_name=user.first_name,
+                    last_name=user.last_name,
+                    date_of_birth=user.date_of_birth,
+                    gender=user.gender,
+                    is_subscription=user.is_subscription,
+                    about_me=user.about_me,
+                    status=user.status,
+                    city_name=db.query(City.city_name).filter(City.id == user.city_id).scalar(),
+                    is_favorite=is_favorite,
+                    interests=interests,
+                    match_percentage=int(match_percentage)
+                )
             else:
                 raise HTTPException(status_code=404, detail="Пользователь не найден")
         except Exception as e:
-            traceback.print_exc()
+            db.rollback()
             print("Error retrieving user:", e)
             raise HTTPException(status_code=500, detail="Internal server error")
 
