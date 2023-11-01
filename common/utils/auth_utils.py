@@ -8,6 +8,20 @@ from config import SECRET_KEY, ACCESS_TOKEN_EXPIRE_MINUTES, REFRESH_TOKEN_EXPIRE
 import re
 import jwt
 from config import VERIFY_CHAT_ID, VERIFY_CHAT_LINK
+from passlib.context import CryptContext
+
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    """
+    Проверяет, совпадает ли предоставленный пароль с его хешированным вариантом.
+
+    :param plain_password: Пароль в открытом виде, который нужно проверить
+    :param hashed_password: Хешированный пароль для сравнения
+    :return: True если пароли совпадают, иначе False
+    """
+    return pwd_context.verify(plain_password, hashed_password)
 
 def create_jwt_token(data: dict):
     return jwt.encode(data, SECRET_KEY, algorithm="HS256")

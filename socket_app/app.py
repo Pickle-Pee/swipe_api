@@ -122,6 +122,7 @@ async def send_message(sid, data):
     message_content = data.get('message')
     external_message_id = data.get('external_message_id')
     reply_to_message_id = data.get('reply_to_message_id')
+    is_admin = data.get('type') == 'admin_message'
 
     # Получаем sender_id из информации о подключении
     sender_info = next((info for info in connected_users.values() if info['sid'] == sid), None)
@@ -181,7 +182,8 @@ async def send_message(sid, data):
                     'sender_id': sender_id,
                     'reply_to_message_id': reply_to_message_id,
                     'message_type': message_type,
-                    'media_urls': media_urls
+                    'media_urls': media_urls,
+                    'is_admin': is_admin
                 }, room=recipient_sid
             )
             socketio_logger.info(f"Message ID {message_id} sent to recipient ID {recipient_id} via socket")
@@ -191,13 +193,16 @@ async def send_message(sid, data):
             if message_content is None:
                 logger.error("message_content is None, cannot send push notification.")
             else:
+                notification_data = {
+                    'type': 'message',
+                    'is_admin': is_admin
+                }
+
                 await send_push_notification(
                     push_token,
                     title,
                     message_content,
-                    data={
-                        'type': 'message'
-                    },
+                    data=notification_data,
                     aps={
                         "content-available": 1
                     })

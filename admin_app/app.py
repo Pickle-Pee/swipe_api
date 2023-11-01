@@ -4,11 +4,16 @@ from fastapi import Depends, HTTPException, FastAPI
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import joinedload
+from starlette import status
 
 from common.models import User
 from common.schemas import UsersResponse
-from common.utils import get_admin_by_username, security
+from common.utils import get_admin_by_username, security, create_access_token
+from common.utils.auth_utils import verify_password
 from config import SessionLocal
+from passlib.context import CryptContext
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 app = FastAPI()
 
@@ -27,14 +32,15 @@ async def login_admin(form_data: OAuth2PasswordRequestForm = Depends()):
     with SessionLocal() as db:
         admin = get_admin_by_username(db, username=form_data.username)
 
-        if not admin or not security.verify_password(form_data.password, admin.hashed_password):
+        if not admin or not verify_password(form_data.password, admin.hashed_password):
             raise HTTPException(
-                status_code=401,
+                status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Incorrect username or password",
                 headers={"WWW-Authenticate": "Bearer"},
             )
 
-        access_token = security.create_access_token(data={"sub": admin.username, "admin_id": admin.id})
+        # Создаем токен доступа для администратора
+        access_token = create_access_token(data={"sub": admin.username, "admin_id": admin.id})
         return {"access_token": access_token, "token_type": "bearer"}
 
 

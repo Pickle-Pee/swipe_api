@@ -2,7 +2,9 @@ version: '3'
 services:
   main_app:
     image: kirillka564/main_app:latest
-    build: ./main_app
+    build:
+      context: .
+      dockerfile: main_app/Dockerfile
     ports:
       - "1024:1024"
     environment:
@@ -17,7 +19,9 @@ services:
 
   socket_app:
     image: kirillka564/socket_app:latest
-    build: ./socket_app
+    build:
+      context: .
+      dockerfile: socket_app/Dockerfile
     ports:
       - "1025:1025"
     environment:
@@ -32,7 +36,9 @@ services:
 
   push_app:
     image: kirillka564/push_app:latest
-    build: ./push_app
+    build:
+      context: .
+      dockerfile: push_app/Dockerfile
     ports:
       - "1026:1026"
     environment:
@@ -40,7 +46,6 @@ services:
     volumes:
       - ./common:/app/common
       - ./config.py:/app/config.py
-      - /root/swipe_api/common/utils:/app/common/utils
     networks:
       - swipe_network
     env_file:
@@ -48,7 +53,9 @@ services:
 
   admin_app:
     image: kirillka564/admin_app:latest
-    build: ./admin_app
+    build:
+      context: .
+      dockerfile: admin_app/Dockerfile
     ports:
       - "1027:1027"
     environment:
@@ -56,7 +63,6 @@ services:
     volumes:
       - ./common:/app/common
       - ./config.py:/app/config.py
-      - /root/swipe_api/common/utils:/app/common/utils
     networks:
       - swipe_network
     env_file:
