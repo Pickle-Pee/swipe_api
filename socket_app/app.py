@@ -2,7 +2,7 @@ import json
 import os
 from datetime import datetime
 from urllib.parse import parse_qs
-from common.models import User, Chat, Message, Media, DateInvitations
+from common.models import User, Chat, Message, Media, DateInvitations, MessageTypeEnum, VoiceMessage
 from common.utils import get_user_id_from_token, send_push_notification, get_user_push_token, get_user_name
 from config import SessionLocal, logger, engine, socketio_logger, sio, socket_app, Base
 
@@ -50,6 +50,8 @@ status_mapping = {
 }
 
 
+# В остальной части вашего кода необходимо определить или импортировать status_mapping и SessionLocal
+
 @sio.event
 async def get_messages(sid, data):
     if isinstance(data, str):
@@ -67,7 +69,6 @@ async def get_messages(sid, data):
         return
 
     user_id = user_info.get('user_id')
-    socketio_logger.info(f"User with ID {user_id} requested messages for chat ID {chat_id}")
 
     if user_id in connected_users:
         connected_users[user_id]['sid'] = sid
@@ -81,21 +82,17 @@ async def get_messages(sid, data):
             await sio.emit('error', {'error': 'Chat not found'}, room=sid)
             return
 
-        is_user1 = chat.user1_id == user_id
-
         messages = db.query(Message).filter(Message.chat_id == chat_id).order_by(Message.id.asc()).all()
         filtered_messages = []
 
         for message in messages:
-            socketio_logger.info(
-                f"Message ID {message.id}: deleted_for_user1={message.deleted_for_user1}, "
-                f"deleted_for_user2={message.deleted_for_user2}, is_user1={is_user1}, user_id={user_id}"
-            )
-
-            # Проверяем, удалено ли сообщение для текущего пользователя
-            if (is_user1 and message.deleted_for_user1) or (not is_user1 and message.deleted_for_user2):
-                socketio_logger.info(f"Message ID {message.id} filtered for user ID {user_id}")
-                continue  # Пропускаем это сообщение, если оно было удалено
+            # Проверяем, не является ли сообщение голосовым
+            if message.message_type == MessageTypeEnum.voice:
+                # Загружаем данные голосового сообщения
+                voice_message = db.query(VoiceMessage.voice_data).filter(VoiceMessage.message_id == message.id).first()
+                voice_data_list = voice_message.voice_data if voice_message else []
+            else:
+                voice_data_list = []
 
             message_dict = {
                 'message_id': message.id,
@@ -103,14 +100,14 @@ async def get_messages(sid, data):
                 'sender_id': message.sender_id,
                 'status': status_mapping.get(message.status, -1),
                 'message_type': message.message_type.name,
-                'media_urls': [media.media_url for media in message.media]
+                'media_urls': [media.media_url for media in message.media],
+                'voice_data': voice_data_list
             }
 
             filtered_messages.append(message_dict)
 
-        socketio_logger.info(f"Data to be emitted: {json.dumps({'messages': filtered_messages}, default=str)}")
-
         await sio.emit('get_messages', {'chatId': chat_id, 'messages': filtered_messages}, room=sid)
+
 
 
 @sio.event
@@ -123,6 +120,7 @@ async def send_message(sid, data):
     external_message_id = data.get('external_message_id')
     reply_to_message_id = data.get('reply_to_message_id')
     is_admin = data.get('type') == 'admin_message'
+    voice_data = data.get('voice_data')
 
     # Получаем sender_id из информации о подключении
     sender_info = next((info for info in connected_users.values() if info['sid'] == sid), None)
@@ -157,6 +155,14 @@ async def send_message(sid, data):
             media = Media(message_id=new_message.id, media_url=url, media_type=message_type)
             db.add(media)
             socketio_logger.info(f"Media with URL {url} added to message ID {message_id}")
+
+        if message_type == MessageTypeEnum.voice.name and voice_data:
+            new_voice_message = VoiceMessage(
+                message_id=new_message.id,
+                voice_data=voice_data
+            )
+            db.add(new_voice_message)
+
 
         db.commit()
         socketio_logger.info(f"Message ID {message_id} committed to database")

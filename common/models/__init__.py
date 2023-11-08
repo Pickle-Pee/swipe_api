@@ -8,7 +8,7 @@ from .auth_models import TemporaryCode, RefreshToken
 from .cities_models import Region, City
 
 # Communication models
-from .communication_models import MessageTypeEnum, Chat, Message, Media, DateInvitations
+from .communication_models import MessageTypeEnum, Chat, Message, Media, DateInvitations, VoiceMessage
 
 # Error models
 from .error_models import ErrorResponse

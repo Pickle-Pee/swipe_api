@@ -1,7 +1,7 @@
 import enum
 from datetime import datetime
 
-from sqlalchemy import Column, String, Integer, ForeignKey, DateTime, Enum, Boolean
+from sqlalchemy import Column, String, Integer, ForeignKey, DateTime, Enum, Boolean, ARRAY
 from sqlalchemy.orm import relationship, backref
 from config import Base
 
@@ -44,10 +44,20 @@ class Message(Base):
 
     sender = relationship("User", back_populates="messages")
     media = relationship("Media", back_populates="message")
+    voice_data = relationship("VoiceMessage", uselist=False, back_populates="message")
+
 
     def as_dict(self):
         return {c.name: getattr(self, c.name) for c in self.__table__.columns}
 
+
+class VoiceMessage(Base):
+    __tablename__ = 'voice_messages'
+
+    message_id = Column(Integer, ForeignKey('messages.id'), primary_key=True)
+    voice_data = Column(ARRAY(Integer), nullable=False)
+
+    message = relationship("Message", back_populates="voice_data")
 
 class Media(Base):
     __tablename__ = 'media'
