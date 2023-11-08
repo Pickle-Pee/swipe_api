@@ -23,13 +23,9 @@ from common.schemas import (
     UserPhotosResponse,
     AddGeolocationRequest
 )
-from config import SessionLocal, logger
-
+from config import SessionLocal, logger, MAX_DISTANCE
 
 router = APIRouter(prefix="/user", tags=["User Controller"])
-
-MAX_DISTANCE = 100000
-
 @router.get("/me", response_model=PersonalUserDataResponse, summary="Получение информации о текущем пользователе")
 async def get_current_user(access_token: str = Depends(get_token)):
     with SessionLocal() as db:

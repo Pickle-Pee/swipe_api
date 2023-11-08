@@ -80,11 +80,12 @@ class UserLikesResponse(BaseModel):
     first_name: Optional[str] = None
     date_of_birth: Optional[date] = None
     city_name: Optional[str] = None
-    # is_favorite: Optional[bool] = False
+    is_favorite: Optional[bool] = None
     about_me: Optional[str] = None
     status: Optional[str] = None
     avatar_url: Optional[str] = None
-    # match_percentage: Optional[int] = None
+    match_percentage: Optional[int] = None
+    mutual: Optional[bool] = None
 
 
 class AddTokenRequest(BaseModel):

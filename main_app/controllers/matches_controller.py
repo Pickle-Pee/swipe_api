@@ -5,12 +5,9 @@ from common.models import User, UserPhoto, City
 from common.schemas import MatchResponse
 from common.utils import execute_sql
 from common.utils.auth_utils import get_token, get_user_id_from_token
-from config import SessionLocal
-
+from config import SessionLocal, MAX_DISTANCE
 
 router = APIRouter(prefix="/match", tags=["Matches Controller"])
-MAX_DISTANCE = 1000000
-
 
 @router.get("/find_matches", response_model=List[MatchResponse])
 def find_matches(access_token: str = Depends(get_token)):

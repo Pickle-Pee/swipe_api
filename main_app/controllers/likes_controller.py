@@ -1,7 +1,7 @@
 from datetime import timedelta, datetime
 from typing import List
-from sqlalchemy.orm import joinedload
 from fastapi import Depends, APIRouter, HTTPException
+from sqlalchemy.orm import joinedload
 from config import SessionLocal
 from common.models import Like, Dislike, Favorite, User, UserPhoto, City
 from common.schemas import FavoriteCreate, UserLikesResponse
@@ -94,6 +94,14 @@ def get_favorites(access_token: str = Depends(get_token)):
                 UserPhoto.user_id == user.id, UserPhoto.is_avatar == True
             ).first()
             city_name = db.query(City.city_name).filter(City.id == user.city_id).first()
+
+            # Проверяем, есть ли взаимный лайк
+            mutual_like = db.query(Like).filter(
+                Like.user_id == user.id,
+                Like.liked_user_id == current_user_id
+            ).first()
+            mutual = mutual_like is not None
+
             response.append(
                 {
                     "id": user.id,
@@ -101,12 +109,14 @@ def get_favorites(access_token: str = Depends(get_token)):
                     "avatar_url": avatar_url[0] if avatar_url else None,
                     "date_of_birth": user.date_of_birth,
                     "city_name": city_name[0] if city_name else None,
-                    # "is_favorite": user.is_favorite,
+                    "is_favorite": True,
                     "about_me": user.about_me,
-                    "status": user.status
+                    "status": user.status,
+                    "mutual": mutual
                 }
             )
         return response
+
 
 
 @router.get("/liked_me", response_model=List[UserLikesResponse], summary="Список пользователей, лайкнувших меня")
@@ -116,12 +126,26 @@ def get_liked_by(access_token: str = Depends(get_token)):
         liked_by_users = db.query(User).join(Like, User.id == Like.user_id).filter(
             Like.liked_user_id == current_user_id).all()
 
-
         response = []
         for user in liked_by_users:
             avatar_url = db.query(UserPhoto.photo_url).filter(
                 UserPhoto.user_id == user.id, UserPhoto.is_avatar == True).first()
-            city_name = db.query(City.city_name).filter(City.id == user.city_id).first()
+            city_name_tuple = db.query(City.city_name).filter(City.id == user.city_id).first()
+            city_name = city_name_tuple[0] if city_name_tuple else None
+
+            # Проверяем, есть ли взаимный лайк
+            mutual_like = db.query(Like).filter(
+                Like.user_id == current_user_id,
+                Like.liked_user_id == user.id
+            ).first()
+            mutual = mutual_like is not None
+
+            # Проверяем, находится ли пользователь в списке избранных текущего пользователя
+            is_favorite = db.query(Favorite).filter(
+                Favorite.user_id == current_user_id,
+                Favorite.favorite_user_id == user.id
+            ).first() is not None
+
             response.append(
                 {
                     "id": user.id,
@@ -129,12 +153,15 @@ def get_liked_by(access_token: str = Depends(get_token)):
                     "avatar_url": avatar_url[0] if avatar_url else None,
                     "date_of_birth": user.date_of_birth,
                     "city_name": city_name,
-                    # "is_favorite": user.is_favorite,
+                    "is_favorite": is_favorite,
                     "about_me": user.about_me,
-                    "status": user.status
+                    "status": user.status,
+                    "mutual": mutual
                 }
             )
         return response
+
+
 
 
 @router.get("/liked_users", response_model=List[UserLikesResponse], summary="Список пользователей, которых лайкнул я")
@@ -153,6 +180,20 @@ def get_liked_users(access_token: str = Depends(get_token)):
                 UserPhoto.user_id == user.id, UserPhoto.is_avatar == True
                 ).first()
             city_name = db.query(City.city_name).filter(City.id == user.city_id).first()
+
+            # Проверяем, есть ли взаимный лайк
+            mutual_like = db.query(Like).filter(
+                Like.user_id == user.id,
+                Like.liked_user_id == current_user_id
+            ).first()
+            mutual = mutual_like is not None
+
+            # Проверяем, находится ли пользователь в списке избранных текущего пользователя
+            is_favorite = db.query(Favorite).filter(
+                Favorite.user_id == current_user_id,
+                Favorite.favorite_user_id == user.id
+            ).first() is not None
+
             response.append(
                 {
                     "id": user.id,
@@ -160,12 +201,15 @@ def get_liked_users(access_token: str = Depends(get_token)):
                     "avatar_url": avatar_url[0] if avatar_url else None,
                     "date_of_birth": user.date_of_birth,
                     "city_name": city_name[0] if city_name else None,
-                    # "is_favorite": user.is_favorite,
+                    "is_favorite": is_favorite,
                     "about_me": user.about_me,
-                    "status": user.status
+                    "status": user.status,
+                    "mutual": mutual
                 }
             )
         return response
+
+
 
 
 @router.delete("/remove_from_favorites/{user_id}", summary="Удалить из избранного")

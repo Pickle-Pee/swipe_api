@@ -194,8 +194,7 @@ async def send_message(sid, data):
                 logger.error("message_content is None, cannot send push notification.")
             else:
                 notification_data = {
-                    'type': 'message',
-                    'is_admin': is_admin
+                    'type': 'message'
                 }
 
                 await send_push_notification(
