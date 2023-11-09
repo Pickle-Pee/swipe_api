@@ -86,13 +86,6 @@ async def get_messages(sid, data):
         filtered_messages = []
 
         for message in messages:
-            # Проверяем, не является ли сообщение голосовым
-            if message.message_type == MessageTypeEnum.voice:
-                # Загружаем данные голосового сообщения
-                voice_message = db.query(VoiceMessage.voice_data).filter(VoiceMessage.message_id == message.id).first()
-                voice_data_list = voice_message.voice_data if voice_message else []
-            else:
-                voice_data_list = []
 
             message_dict = {
                 'message_id': message.id,
@@ -100,9 +93,16 @@ async def get_messages(sid, data):
                 'sender_id': message.sender_id,
                 'status': status_mapping.get(message.status, -1),
                 'message_type': message.message_type.name,
-                'media_urls': [media.media_url for media in message.media],
-                'voice_data': voice_data_list
             }
+
+            if message.message_type in [MessageTypeEnum.image, MessageTypeEnum.voice]:
+                message_dict['media_urls'] = [media.media_url for media in message.media]
+
+                # Добавление voice_data если тип сообщения voice
+            if message.message_type == MessageTypeEnum.voice:
+                voice_message = db.query(VoiceMessage).filter(VoiceMessage.message_id == message.id).first()
+                if voice_message:
+                    message_dict['voice_data'] = voice_message.voice_data
 
             filtered_messages.append(message_dict)
 
