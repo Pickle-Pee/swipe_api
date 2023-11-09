@@ -63,7 +63,7 @@ def find_matches(access_token: str = Depends(get_token)):
             interests_percentage = (match["common_interests_count"] / len(
                 current_user.interests
                 )) * 100 if current_user.interests else 0
-            distance_percentage = 100 if match["distance"] and match["distance"] <= MAX_DISTANCE else 0
+            distance_percentage = 100 if match["distance"] and str(match["distance"]) <= MAX_DISTANCE else 0
             match_percentage = (interests_percentage + distance_percentage) / 2
 
             response.append(

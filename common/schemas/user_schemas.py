@@ -84,7 +84,7 @@ class UserLikesResponse(BaseModel):
     about_me: Optional[str] = None
     status: Optional[str] = None
     avatar_url: Optional[str] = None
-    match_percentage: Optional[int] = None
+    match_percentage: Optional[float] = None
     mutual: Optional[bool] = None
 
 
