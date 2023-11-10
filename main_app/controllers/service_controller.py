@@ -8,7 +8,6 @@ from fastapi.responses import StreamingResponse, JSONResponse
 from common.models import City, Region, User, UserPhoto, VerificationQueue
 from common.schemas import VerificationUpdate, VerificationStatus
 from common.utils import (
-    send_event_to_socketio,
     send_push_notification,
     get_user_push_token,
     get_user_id_from_token,
