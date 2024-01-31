@@ -24,3 +24,4 @@ class MatchResponse(BaseModel):
     city_name: Optional[str] = None
     avatar_url: Optional[str] = None
     match_percentage: Optional[float] = None
+    is_favorite: Optional[bool] = None

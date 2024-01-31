@@ -22,7 +22,7 @@ def read_user_interests(access_token: str = Depends(get_token)):
 
         if not user_interests:
             error_response = ErrorResponse(detail="No interests", code=622)
-            return JSONResponse(content=error_response.dict(), status_code=403)
+            return JSONResponse(content=error_response.dict(), status_code=200)
 
         # Формирование списка интересов для ответа
         interests_list = [{"id": interest.id, "interest_text": interest.interest_text} for interest in user_interests]

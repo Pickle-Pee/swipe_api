@@ -270,14 +270,14 @@ async def update_verification_status(
         user_id: int,
         verification_update: VerificationUpdate) -> JSONResponse:
     with SessionLocal() as db:
-        verification = db.query(VerificationQueue).filter(VerificationQueue.user_id == user_id).first()
+        # verification = db.query(VerificationQueue).filter(VerificationQueue.user_id == user_id).first()
 
-        if not verification:
-            logger.error("User not found in verification queue")
-            raise HTTPException(status_code=404, detail="User not found in verification queue")
+        # if not verification:
+        #     logger.error("User not found in verification queue")
+        #     raise HTTPException(status_code=404, detail="User not found in verification queue")
 
-        verification.status = verification_update.status.value
-        db.commit()
+        # verification.status = verification_update.status.value
+        # db.commit()
 
         user = db.query(User).filter(User.id == user_id).first()
 

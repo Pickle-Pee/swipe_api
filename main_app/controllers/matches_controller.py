@@ -42,13 +42,16 @@ def find_matches(access_token: str = Depends(get_token)):
                 d.gender,
                 d.city_id,
                 d.distance,
-                COUNT(ui2.interest_id) AS common_interests_count -- Исправлено здесь
+                COUNT(ui2.interest_id) AS common_interests_count,
+                CASE WHEN f.favorite_user_id IS NOT NULL THEN TRUE ELSE FALSE END AS is_favorite
             FROM distances d
             LEFT JOIN user_interests ui1 ON ui1.user_id = :current_user_id
             LEFT JOIN user_interests ui2 ON ui2.user_id = d.potential_match_id AND ui1.interest_id = ui2.interest_id
+            LEFT JOIN favorites f ON d.potential_match_id = f.favorite_user_id AND f.user_id = :current_user_id
             WHERE d.potential_match_id NOT IN (SELECT liked_user_id FROM likes WHERE user_id = :current_user_id)
             AND d.potential_match_id NOT IN (SELECT disliked_user_id FROM dislikes WHERE user_id = :current_user_id)
-            GROUP BY d.potential_match_id, d.first_name, d.date_of_birth, d.gender, d.city_id, d.distance
+            GROUP BY d.potential_match_id, d.first_name, d.date_of_birth, d.gender, d.city_id, d.distance, f.favorite_user_id
+
             """, params={"current_user_id": user_id}
             )
 
@@ -77,7 +80,8 @@ def find_matches(access_token: str = Depends(get_token)):
                     interests=[interest.interest.interest_text for interest in
                                db.query(User).filter(User.id == match["potential_match_id"]).first().interests],
                     avatar_url=avatar_url,
-                    match_percentage=match_percentage
+                    match_percentage=match_percentage,
+                    is_favorite=match["is_favorite"]
                 )
             )
 
