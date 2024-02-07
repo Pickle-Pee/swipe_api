@@ -28,3 +28,6 @@ from .user_models import (
     UserGeolocation,
     VerificationQueue,
 )
+
+# Subscriptions models
+from .subscriptions_models import Subscription

@@ -2,6 +2,7 @@ from datetime import date, datetime
 from pydantic import BaseModel, Field, validator
 from typing import Optional, List, Literal
 
+
 class UserCreate(BaseModel):
     class Config:
         arbitrary_types_allowed = True
@@ -38,6 +39,7 @@ class UserIdResponse(BaseModel):
     is_subscription: bool
     created_at: datetime
     updated_at: datetime
+
 
 class InterestResponseUser(BaseModel):
     interest_id: int
@@ -133,6 +135,22 @@ class AddGeolocationRequest(BaseModel):
     latitude: float
     longitude: float
 
+
+class UsersResponseAdmin(BaseModel):
+    id: int
+    phone_number: str
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    date_of_birth: Optional[date] = None
+    gender: Optional[str] = None
+    city_name: Optional[str] = None
+    deleted: Optional[bool]
+
+
+class UsersResponse(BaseModel):
+    users: List[UsersResponseAdmin]
+
+
 class UserResponseAdmin(BaseModel):
     id: int
     phone_number: str
@@ -147,8 +165,4 @@ class UserResponseAdmin(BaseModel):
     city_name: Optional[str] = None
     about_me: Optional[str] = None
     status: Optional[str] = None
-    deleted: Optional[bool]
-
-
-class UsersResponse(BaseModel):
-    users: List[UserResponseAdmin]
+    deleted: Optional[bool] = None
