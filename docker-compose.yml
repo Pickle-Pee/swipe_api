@@ -1,0 +1,89 @@
+version: '3'
+services:
+  redis:
+    image: redis:latest
+    container_name: redis
+    ports:
+      - "6379:6379"
+    networks:
+      - swipe_network
+
+  main_app:
+    build:
+      context: .
+      dockerfile: main_app/Dockerfile
+    ports:
+      - "1024:1024"
+    environment:
+      - PYTHONPATH=/app
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    volumes:
+      - ./main_app:/app
+      - ./common:/app/common
+      - ./config.py:/app/config.py
+    networks:
+      - swipe_network
+    env_file:
+      - .env
+
+  socket_app:
+    build:
+      context: .
+      dockerfile: socket_app/Dockerfile
+    ports:
+      - "1025:1025"
+    environment:
+      - PYTHONPATH=/app
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    volumes:
+      - ./socket_app:/app
+      - ./common:/app/common
+      - ./config.py:/app/config.py
+    networks:
+      - swipe_network
+    env_file:
+      - .env
+
+  push_app:
+    build:
+      context: .
+      dockerfile: push_app/Dockerfile
+    ports:
+      - "1026:1026"
+    environment:
+      - PYTHONPATH=/app
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    volumes:
+      - ./push_app:/app
+      - ./common:/app/common
+      - ./config.py:/app/config.py
+    networks:
+      - swipe_network
+    env_file:
+      - .env
+
+  admin_app:
+    build:
+      context: .
+      dockerfile: admin_app/Dockerfile
+    ports:
+      - "1027:1027"
+    environment:
+      - PYTHONPATH=/app
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    volumes:
+      - ./admin_app:/app
+      - ./common:/app/common
+      - ./config.py:/app/config.py
+    networks:
+      - swipe_network
+    env_file:
+      - .env
+
+networks:
+  swipe_network:
+    driver: bridge
