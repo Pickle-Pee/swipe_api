@@ -1,93 +1,117 @@
-# swipe_api
+# Swipe API
 
+Backend MVP приложения знакомств. Репозиторий содержит основной FastAPI API, Socket.IO сервис, Firebase push-сервис и административный API с общей PostgreSQL-моделью.
 
+Текущее техническое состояние и известные блокеры описаны в `docs/BASELINE.md`, продуктовый объём — в `docs/PROJECT_CONTEXT.md`.
 
-## Getting started
+## Требования
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
+- Python 3.11;
+- PostgreSQL;
+- Redis;
+- системные build tools для `dlib`/`face-recognition`;
+- `libmagic` на Linux; на Windows устанавливается `python-magic-bin`;
+- Docker Desktop — опционально, Docker-сценарий будет завершён отдельной задачей.
 
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
+На Windows для сборки некоторых пакетов нужны Microsoft C++ Build Tools. Все Docker images используют Python 3.11.
 
-## Add your files
+## Установка
 
-- [ ] [Create](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#create-a-file) or [upload](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#upload-a-file) files
-- [ ] [Add files using the command line](https://docs.gitlab.com/ee/gitlab-basics/add-file.html#add-a-file-using-the-command-line) or push an existing Git repository with the following command:
+Windows PowerShell:
 
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
 ```
-cd existing_repo
-git remote add origin https://gitlab.com/Pickle-Pee/swipe_api.git
-git branch -M main
-git push -uf origin main
+
+Linux/macOS:
+
+```bash
+python3.11 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
 ```
 
-## Integrate with your tools
+Для разработки:
 
-- [ ] [Set up project integrations](https://gitlab.com/Pickle-Pee/swipe_api/-/settings/integrations)
+```powershell
+python -m pip install -r requirements-dev.txt
+```
 
-## Collaborate with your team
+Не коммитьте `.env`, Firebase service-account JSON, ключи и signing-файлы. Полный безопасный `.env.example` и demo-конфигурация появятся в следующей задаче. До этого не используйте production/dev credentials для smoke-тестов.
 
-- [ ] [Invite team members and collaborators](https://docs.gitlab.com/ee/user/project/members/)
-- [ ] [Create a new merge request](https://docs.gitlab.com/ee/user/project/merge_requests/creating_merge_requests.html)
-- [ ] [Automatically close issues from merge requests](https://docs.gitlab.com/ee/user/project/issues/managing_issues.html#closing-issues-automatically)
-- [ ] [Enable merge request approvals](https://docs.gitlab.com/ee/user/project/merge_requests/approvals/)
-- [ ] [Set auto-merge](https://docs.gitlab.com/ee/user/project/merge_requests/merge_when_pipeline_succeeds.html)
+## Проверки
 
-## Test and Deploy
+```powershell
+python -m pip check
+python -m compileall -q admin_app common main_app push_app socket_app
+ruff check admin_app common main_app push_app socket_app config.py
+ruff format --check admin_app common main_app push_app socket_app config.py
+pytest
+```
 
-Use the built-in continuous integration in GitLab.
+Автоматических тестов в исходном baseline нет, поэтому `pytest` пока сообщает, что тесты не найдены. Это известное ограничение, а не причина отключать команду в CI.
 
-- [ ] [Get started with GitLab CI/CD](https://docs.gitlab.com/ee/ci/quick_start/index.html)
-- [ ] [Analyze your code for known vulnerabilities with Static Application Security Testing (SAST)](https://docs.gitlab.com/ee/user/application_security/sast/)
-- [ ] [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/ee/topics/autodevops/requirements.html)
-- [ ] [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/ee/user/clusters/agent/)
-- [ ] [Set up protected environments](https://docs.gitlab.com/ee/ci/environments/protected_environments.html)
+Ruff подключён как диагностический инструмент. Исходный legacy-код пока не проходит его полностью: baseline содержит 170 lint-нарушений и 46 файлов, требующих форматирования. Их массовое исправление вынесено из задачи нормализации зависимостей, чтобы не смешивать механический рефакторинг с runtime-изменениями.
 
-***
+## Запуск без Docker
 
-# Editing this README
+Корень репозитория должен присутствовать в `PYTHONPATH`. Также нужны безопасно настроенные PostgreSQL, Redis и переменные окружения.
 
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thanks to [makeareadme.com](https://www.makeareadme.com/) for this template.
+```powershell
+$env:PYTHONPATH = (Get-Location).Path
 
-## Suggestions for a good README
+Push-Location main_app
+python app.py
+Pop-Location
 
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
+Push-Location socket_app
+python app.py
+Pop-Location
 
-## Name
-Choose a self-explaining name for your project.
+Push-Location push_app
+python app.py
+Pop-Location
 
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
+Push-Location admin_app
+uvicorn app.main:app --host 0.0.0.0 --port 1027
+Pop-Location
+```
 
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
+Порты:
 
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
+- main API: `1024`;
+- Socket.IO: `1025`;
+- push API: `1026`;
+- admin API: `1027`;
+- Redis: `6379`.
 
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
+## База данных
 
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
+Приложения не вызывают `Base.metadata.create_all()`. Схема должна применяться Alembic:
 
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
+```powershell
+alembic upgrade head
+```
 
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
+Не запускайте миграции на URL из неизвестного `.env`. Проверка существующей цепочки миграций на новой локальной PostgreSQL будет выполнена отдельной задачей.
 
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
+## Docker Compose
 
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
+Статическая проверка без печати развёрнутых секретов:
 
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
+```powershell
+docker compose config --quiet
+```
 
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
+Полная сборка отложена до включения виртуализации и запуска Docker Desktop:
 
-## License
-For open source projects, say how it is licensed.
+```powershell
+docker compose build
+docker compose up
+```
 
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+Текущий Compose ещё не содержит локальный PostgreSQL и healthchecks; это объём следующей Docker-задачи.

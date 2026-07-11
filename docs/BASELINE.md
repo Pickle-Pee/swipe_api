@@ -48,11 +48,13 @@ Runtime-вызовы `create_all` удалены из main/socket/admin. Упр�
 - `face-recognition` добавлен в `requirements.txt`; для совместимости его models с `pkg_resources` добавлен `setuptools<81`.
 - Lock-файл отсутствует, поэтому получаемый набор меняется со временем и между Python 3.9/3.11.
 
-Единственная требуемая версия Python в репозитории не определена. Для унификации следующим шагом рекомендуется Python 3.11: он уже используется push/admin images и совместим с текущим синтаксисом; main/socket всё ещё закреплены на 3.9. Это рекомендация baseline, а не выполненное обновление runtime. Чистая проверка ниже фактически выполнена на единственном доступном в среде Python 3.12.13.
+Поддерживаемый runtime зафиксирован как Python 3.11; все четыре Dockerfile используют `python:3.11`/`python:3.11-slim`. Чистая локальная приёмка дополнительно выполнена на доступном Python 3.12.13.
+
+`requirements.txt` очищен от дублей и конфликтующих реализаций (`jose`, исходный `psycopg2`, повторные `python-dotenv`, `python-multipart`, `passlib`) и закреплён по версиям. Добавлены фактически необходимые `alembic`, `httpx`, `face-recognition`, compatibility pin `setuptools` и платформенный выбор `python-magic`. `requirements-dev.txt` содержит pytest, pytest-asyncio и Ruff.
 
 Команда `python -m pip install --dry-run --ignore-installed -r requirements.txt` после разрешения сетевого доступа завершилась с кодом 0 на Python 3.12. Первая реальная установка в новом игнорируемом `.venv` завершилась с кодом 1: сборка wheel `pywatchman==4.0.0` требовала Microsoft Visual C++ 14.0+. После установки пользователем системных build-зависимостей повторная команда `python -m pip install -r requirements.txt` завершилась успешно (код 0); `pip check` также завершился успешно. Значит, requirements устанавливается на проверенной Windows/Python 3.12 машине при наличии C++ toolchain, но эта системная предпосылка не документирована проектом.
 
-Для Windows `python-magic-bin` и для Linux `python-magic` теперь выбираются environment markers. Это устраняет локальное отсутствие `libmagic` DLL без изменения Linux/Docker runtime.
+Для Windows `python-magic-bin` и для Linux `python-magic` выбираются environment markers. Это устраняет локальное отсутствие `libmagic` DLL без изменения Linux/Docker runtime. Установка обоих requirements-файлов с нуля в `.venv-deps-check` завершилась успешно.
 
 ## Переменные окружения
 
@@ -95,7 +97,7 @@ Compose описывает `redis`, `main_app`, `socket_app`, `push_app`, `admin
 
 ## Существующие тесты и проверки
 
-Тестовых файлов, `pytest.ini`, `pyproject.toml`, `tox.ini` или test fixtures не найдено. `pytest` не указан в requirements. CI-команда `docker-compose run --rm main_app pytest` поэтому не подтверждена.
+Тестовых файлов, `pytest.ini`, `pyproject.toml`, `tox.ini` или test fixtures не найдено. Pytest и pytest-asyncio добавлены в `requirements-dev.txt`; запуск завершается без найденных тестов. CI-команда `docker-compose run --rm main_app pytest` пока не проверяет поведение приложения.
 
 Выполнено:
 
@@ -111,11 +113,13 @@ python -m compileall -q admin_app common main_app push_app socket_app
 python -c "import config"          -> успешно
 main_app: python -c "import app"   -> успешно
 socket_app: python -c "import app" -> успешно
-push_app: python -c "import app"   -> FileNotFoundError: Firebase credential
+push_app: python -c "import app"   -> успешно с локальным игнорируемым Firebase credential
 admin_app: python -c "import app.main" -> успешно без подключения к PostgreSQL
 ```
 
-Для импортов `PYTHONPATH` содержал корень репозитория, как это предполагает Compose. Main/socket/admin импортируются с безопасными локальными env-значениями. Push по-прежнему требует корректный Firebase Admin service-account файл. `orm_mode` заменён на `from_attributes`, предупреждение Pydantic 2 устранено. Сторонний `face_recognition_models 0.3.0` всё ещё предупреждает о deprecated `pkg_resources`; `setuptools<81` сохраняет работоспособность до обновления upstream.
+Для импортов `PYTHONPATH` содержал корень репозитория, как это предполагает Compose. Все четыре приложения импортируются с безопасными локальными DB/S3-значениями и локальным игнорируемым Firebase credential. `orm_mode` заменён на `from_attributes`, предупреждение Pydantic 2 устранено. Сторонний `face_recognition_models 0.3.0` всё ещё предупреждает о deprecated `pkg_resources`; `setuptools<81` сохраняет работоспособность до обновления upstream.
+
+Ruff добавлен как dev-линтер/форматтер. Диагностический baseline: `ruff check` находит 170 существующих нарушений, `ruff format --check` — 46 требующих форматирования файлов. Массовое исправление не выполнялось в задаче зависимостей.
 
 Обязательный `docker compose config --quiet` успешно выполнен абсолютной командой Docker. После удаления поля `version` предупреждений нет. Полный вывод небезопасно раскрывает значения `.env`; повторять его в логах нельзя.
 

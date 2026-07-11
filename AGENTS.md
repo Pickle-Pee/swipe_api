@@ -38,13 +38,14 @@
 
 ## Текущие команды (baseline)
 
-Поддерживаемая версия Python ещё не зафиксирована проектом: main/socket images используют 3.9, push/admin — 3.11. До нормализации зависимостей использовать Python 3.11 как целевой общий runtime и явно сообщать, если проверка выполнена другой версией.
+Поддерживаемый runtime проекта — Python 3.11; все Dockerfile используют эту версию. Локальная приёмочная проверка зависимостей также может выполняться на Python 3.12, но это не меняет целевой runtime.
 
 ```text
 python -m venv .venv
 # Windows PowerShell
 .\.venv\Scripts\Activate.ps1
 python -m pip install -r requirements.txt
+python -m pip install -r requirements-dev.txt
 
 # Запуск из корня с PYTHONPATH, содержащим корень репозитория
 cd main_app; python app.py
@@ -52,8 +53,10 @@ cd socket_app; python app.py
 cd push_app; python app.py
 cd admin_app; uvicorn app.main:app --host 0.0.0.0 --port 1027
 
-# Заявленная CI-проверка; тестов и pytest в baseline пока нет
+# Тесты и статические проверки
 pytest
+ruff check admin_app common main_app push_app socket_app config.py
+ruff format --check admin_app common main_app push_app socket_app config.py
 
 docker compose config
 docker compose up --build
