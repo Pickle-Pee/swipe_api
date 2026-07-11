@@ -5,7 +5,7 @@ from fastapi.security import HTTPBearer
 from socketio import AsyncClient
 
 from .user_utils import deactivate_push_token
-from config import logger
+from config import IS_DEMO, PUSH_URL, logger
 from PIL import Image
 import io
 
@@ -13,7 +13,10 @@ security = HTTPBearer()
 sio_client = AsyncClient()
 
 
-def send_push_notification(token: str, title: str, body: str, data: dict):
+async def send_push_notification(token: str, title: str, body: str, data: dict, **_options):
+    if IS_DEMO:
+        logger.info("Push notification skipped in demo mode")
+        return None
     push_message = {
         "title": title,
         "body": body,
@@ -22,7 +25,7 @@ def send_push_notification(token: str, title: str, body: str, data: dict):
     }
     try:
         response = requests.post(
-            "http://localhost:1026/send_push",
+            PUSH_URL,
             json=push_message
         )
         if response.status_code != 200:

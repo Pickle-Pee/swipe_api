@@ -10,7 +10,7 @@ from common.utils import (
     STATUS_HANDLERS,
 )
 from common.schemas import SubscriptionsResponse, TinkoffWebhook
-from config import SessionLocal, logger, TBANK_KASSA_TERMINAL, TBANK_KASSA_PASSWORD
+from config import IS_DEMO, SessionLocal, logger, TBANK_KASSA_TERMINAL, TBANK_KASSA_PASSWORD
 from datetime import datetime, timedelta
 import requests
 
@@ -177,15 +177,25 @@ async def handle_tinkoff_webhook(webhook: TinkoffWebhook, background_tasks: Back
 
 @router.post("/init_payment", summary="Инициализация платежа")
 async def init_payment(request: Request, access_token: str = Depends(get_token)):
-    logger.info(f"Headers: {request.headers}")
     data = await request.json()
-    logger.info(f"Received data: {data}")
+    logger.info("Payment initialization request received")
 
     # Проверка обязательных параметров, исключая email
     required_fields = ["orderId", "amount", "customerKey", "phone", "subscriptionId"]
     if not all(field in data and data[field] for field in required_fields):
         logger.error("Missing required parameters")
         raise HTTPException(status_code=400, detail="Missing required parameters")
+
+    if IS_DEMO:
+        return {
+            "paymentId": 0,
+            "paymentURL": "demo://payment/success",
+            "orderId": data["orderId"],
+            "amount": data["amount"],
+            "description": f"Demo payment for order {data['orderId']}",
+            "customerKey": data["customerKey"],
+            "subscriptionId": data["subscriptionId"],
+        }
 
     with SessionLocal() as db:
         user_id = get_user_id_from_token(access_token)
@@ -236,8 +246,6 @@ async def init_payment(request: Request, access_token: str = Depends(get_token))
         "PayType": "O",
     }
 
-    logger.info(f"Init params: {init_params}")
-
     try:
         token = generate_init_token(init_params, TBANK_KASSA_PASSWORD)
     except ValueError as ve:
@@ -246,13 +254,11 @@ async def init_payment(request: Request, access_token: str = Depends(get_token))
 
     init_params["Token"] = token
 
-    logger.info(f"Init params with token: {init_params}")
-
     # Отправляем запрос Init
     try:
         response = requests.post("https://securepay.tinkoff.ru/v2/Init", json=init_params)
         response_data = response.json()
-        logger.info(f"Tinkoff Init response: {response_data}")
+        logger.info("Payment provider response received")
 
         if response_data.get("Success"):
             payment_id_str = response_data.get("PaymentId")

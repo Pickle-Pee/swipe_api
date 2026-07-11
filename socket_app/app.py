@@ -377,7 +377,7 @@ async def send_message(sid, data):
                     tokens = [token.token for token in recipient.tokens if token.active]
                     if tokens:
                         for token in tokens:
-                            send_push_notification(
+                            await send_push_notification(
                                 token=token,
                                 title=title,
                                 body=message_content,

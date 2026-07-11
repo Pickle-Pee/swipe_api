@@ -41,7 +41,15 @@ python -m pip install -r requirements.txt
 python -m pip install -r requirements-dev.txt
 ```
 
-Не коммитьте `.env`, Firebase service-account JSON, ключи и signing-файлы. Полный безопасный `.env.example` и demo-конфигурация появятся в следующей задаче. До этого не используйте production/dev credentials для smoke-тестов.
+Не коммитьте `.env`, Firebase service-account JSON, ключи и signing-файлы. Для локального demo скопируйте безопасный шаблон:
+
+```powershell
+Copy-Item .env.example .env
+```
+
+При `APP_ENV=demo` SMS и push не отправляются, платёжный провайдер и scheduler автоплатежей не вызываются, а S3 заменяется каталогом `.demo_storage`. Demo verification code задаётся через `DEMO_VERIFICATION_CODE` и возвращается только в demo. Значения demo по умолчанию запрещено использовать в production.
+
+`APP_ENV=production` выполняет fail-fast проверку обязательных DB, SMS, Firebase, S3, DaData и Т-Банк параметров и перечисляет отсутствующие имена без вывода значений.
 
 ## Проверки
 

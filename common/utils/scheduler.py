@@ -3,7 +3,7 @@ from typing import Tuple, Any
 import pytz
 from apscheduler.schedulers.background import BackgroundScheduler
 from common.models import UserSubscription, User, Subscription, Transaction
-from config import SessionLocal, logger, TBANK_KASSA_TERMINAL
+from config import IS_DEMO, SessionLocal, logger, TBANK_KASSA_TERMINAL
 from datetime import datetime, timedelta
 import requests
 
@@ -45,6 +45,9 @@ def deactivate_expired_subscriptions():
 
 
 def process_subscription_payment(user: User, subscription: UserSubscription, rebill_id: str):
+    if IS_DEMO:
+        logger.info("Recurring payment skipped in demo mode")
+        return True, 0
     # Подготовка данных для запроса Charge
     amount = int(subscription.subscription.price * 100)  # сумма в копейках
     order_id = f"{subscription.id}-{int(datetime.utcnow().timestamp())}"
@@ -157,6 +160,9 @@ def auto_renew_subscriptions():
 
 
 def start_scheduler():
+    if IS_DEMO:
+        logger.info("Payment scheduler disabled in demo mode")
+        return None
     utc_timezone = pytz.timezone('UTC')
     scheduler = BackgroundScheduler(timezone=utc_timezone)
     scheduler.add_job(deactivate_expired_subscriptions, 'interval', hours=24, next_run_time=utc_timezone.localize(datetime.utcnow()))

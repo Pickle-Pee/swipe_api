@@ -105,6 +105,8 @@ celerybeat.pid
 .env
 .venv
 .venv-*
+.demo_storage/
+.demo_storage_test/
 env/
 venv/
 ENV/

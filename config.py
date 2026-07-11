@@ -9,6 +9,9 @@ import os
 import logging
 import boto3
 import redis
+from pathlib import Path
+
+load_dotenv()
 
 redis_host = os.getenv('REDIS_HOST', 'redis')
 redis_port = os.getenv('REDIS_PORT', 6379)
@@ -35,20 +38,33 @@ def add_cors(app):
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
-# Environments configuration
-
-load_dotenv()
-
 os.environ["MYPYTHON"] = "True"
 
-DATABASE_URL = os.getenv("DATABASE_URL")
-ASYNC_DATABASE_URL = os.getenv("ASYNC_DATABASE_URL")
-SECRET_KEY = os.getenv("SECRET_KEY")
+APP_ENV = os.getenv("APP_ENV", "development").lower()
+if APP_ENV not in {"demo", "development", "production"}:
+    raise RuntimeError("APP_ENV must be one of: demo, development, production")
+
+IS_DEMO = APP_ENV == "demo"
+IS_PRODUCTION = APP_ENV == "production"
+
+
+def env_value(name, demo_default=None):
+    value = os.getenv(name)
+    if value not in (None, ""):
+        return value
+    if IS_DEMO:
+        return demo_default
+    return None
+
+
+DATABASE_URL = env_value("DATABASE_URL", "postgresql://swipe:swipe@localhost:5432/swipe_demo")
+ASYNC_DATABASE_URL = env_value("ASYNC_DATABASE_URL", "postgresql+asyncpg://swipe:swipe@localhost:5432/swipe_demo")
+SECRET_KEY = env_value("SECRET_KEY", "demo-secret-key-not-for-production")
 DADATA_API_TOKEN = os.getenv("DADATA_API_TOKEN")
 DADATA_API_SECRET = os.getenv("DADATA_API_SECRET")
 DADATA_API_URL = os.getenv("DADATA_API_URL")
-ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES"))
-REFRESH_TOKEN_EXPIRE_HOURS = int(os.getenv("REFRESH_TOKEN_EXPIRE_HOURS"))
+ACCESS_TOKEN_EXPIRE_MINUTES = int(env_value("ACCESS_TOKEN_EXPIRE_MINUTES", "30") or "30")
+REFRESH_TOKEN_EXPIRE_HOURS = int(env_value("REFRESH_TOKEN_EXPIRE_HOURS", "168") or "168")
 YANDEX_KEY_ID = os.getenv("YANDEX_KEY_ID")
 YANDEX_KEY = os.getenv("YANDEX_KEY")
 BUCKET_MESSAGE_IMAGES = os.getenv("BUCKET_MESSAGE_IMAGES")
@@ -62,11 +78,27 @@ VERIFY_CHAT_ID = os.getenv("VERIFY_CHAT_ID")
 VERIFY_SEND_TEXT = os.getenv("VERIFY_SEND_TEXT")
 SMS_CENTER_LOGIN = os.getenv("SMS_CENTER_LOGIN")
 SMS_CENTER_PASSWORD = os.getenv("SMS_CENTER_PASSWORD")
-MAX_DISTANCE = float(os.getenv("MAX_DISTANCE"))
+MAX_DISTANCE = float(env_value("MAX_DISTANCE", "100") or "100")
 OPEN_API_KEY = os.getenv("OPEN_API_KEY")
 SMS_SENDER = os.getenv("SMS_SENDER")
 TBANK_KASSA_PASSWORD = os.getenv("TBANK_KASSA_PASSWORD")
 TBANK_KASSA_TERMINAL = os.getenv("TBANK_KASSA_TERMINAL")
+PUSH_URL = env_value("PUSH_URL", "http://localhost:1026/send_push")
+DEMO_STORAGE_DIR = Path(env_value("DEMO_STORAGE_DIR", ".demo_storage") or ".demo_storage")
+DEMO_VERIFICATION_CODE = env_value("DEMO_VERIFICATION_CODE", "000000")
+
+required_base = ["DATABASE_URL", "ASYNC_DATABASE_URL", "SECRET_KEY"]
+required_production = required_base + [
+    "DADATA_API_TOKEN", "DADATA_API_SECRET", "DADATA_API_URL",
+    "YANDEX_KEY_ID", "YANDEX_KEY", "BUCKET_MESSAGE_IMAGES",
+    "BUCKET_MESSAGE_VOICES", "BUCKET_PROFILE_IMAGES", "BUCKET_VERIFY_IMAGES",
+    "SMS_CENTER_LOGIN", "SMS_CENTER_PASSWORD", "SMS_SENDER",
+    "FIREBASE_CREDENTIALS_PATH", "TBANK_KASSA_PASSWORD", "TBANK_KASSA_TERMINAL",
+]
+required_names = required_production if IS_PRODUCTION else ([] if IS_DEMO else required_base)
+missing_names = [name for name in required_names if not globals().get(name)]
+if missing_names:
+    raise RuntimeError("Missing required environment variables: " + ", ".join(missing_names))
 
 TKASSA_PUBLIC_KEY = "tkassa_public.pem"
 
@@ -102,10 +134,32 @@ Base = declarative_base()
 sio = socketio.AsyncServer(async_mode='asgi', cors_allowed_origins="*", logger=True, engineio_logger=True)
 socket_app = socketio.ASGIApp(sio)
 
-s3_client = boto3.client(
-    's3',
-    endpoint_url='https://storage.yandexcloud.net',
-    aws_access_key_id=YANDEX_KEY_ID,
-    aws_secret_access_key=YANDEX_KEY,
-    # region_name=REGION_KEY
-)
+class LocalStorageClient:
+    def __init__(self, root):
+        self.root = Path(root)
+        self.root.mkdir(parents=True, exist_ok=True)
+
+    def upload_fileobj(self, file_obj, bucket, key):
+        target = self.root / (bucket or "default") / Path(key).name
+        target.parent.mkdir(parents=True, exist_ok=True)
+        with target.open("wb") as output:
+            output.write(file_obj.read())
+
+    def get_object(self, Bucket, Key):
+        source = self.root / (Bucket or "default") / Path(Key).name
+        return {"Body": source.open("rb")}
+
+
+if IS_DEMO:
+    BUCKET_MESSAGE_IMAGES = BUCKET_MESSAGE_IMAGES or "message-images"
+    BUCKET_MESSAGE_VOICES = BUCKET_MESSAGE_VOICES or "message-voices"
+    BUCKET_PROFILE_IMAGES = BUCKET_PROFILE_IMAGES or "profile-images"
+    BUCKET_VERIFY_IMAGES = BUCKET_VERIFY_IMAGES or "verify-images"
+    s3_client = LocalStorageClient(DEMO_STORAGE_DIR)
+else:
+    s3_client = boto3.client(
+        "s3",
+        endpoint_url="https://storage.yandexcloud.net",
+        aws_access_key_id=YANDEX_KEY_ID,
+        aws_secret_access_key=YANDEX_KEY,
+    )

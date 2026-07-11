@@ -54,6 +54,7 @@ from config import (
     BUCKET_PROFILE_IMAGES,
     socketio_logger,
     redis_client)
+from config import IS_DEMO, DEMO_VERIFICATION_CODE
 import socketio
 import json
 
@@ -167,23 +168,22 @@ def send_verification_code(phone_number: str):
                 error_response = ErrorResponse(detail="Некорректный номер телефона", code=666)
                 return JSONResponse(content=error_response.dict(), status_code=400)
 
-            if phone_number == "79000000000":
-                verification_code = "834721"
-                logger.debug(f"Using static verification code for phone number {phone_number}")
+            if IS_DEMO:
+                verification_code = DEMO_VERIFICATION_CODE
+                logger.debug("Using demo verification code")
             else:
                 verification_code = generate_verification_code()
-                logger.debug(f"Generated verification code {verification_code} for phone number {phone_number}")
 
             temp_code = TemporaryCode(phone_number=phone_number, code=verification_code)
             db.add(temp_code)
             db.commit()
             logger.info(f"Temporary code saved to database for {phone_number}")
 
-            if phone_number != "79000000000":
+            if not IS_DEMO:
                 smsc.send_sms(phone_number, f"Ваш код авторизации {verification_code}", sender=SMS_SENDER)
-                logger.info(f"SMS sent to {phone_number} with code {verification_code}")
+                logger.info(f"SMS sent to {phone_number}")
 
-            return VerificationResponse(verification_code=verification_code)
+            return VerificationResponse(verification_code=verification_code if IS_DEMO else "")
         except Exception as e:
             logger.error(f"Error sending verification code to {phone_number}: {e}", exc_info=True)
             raise HTTPException(status_code=500, detail="Error sending verification code")

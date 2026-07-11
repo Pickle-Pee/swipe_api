@@ -5,7 +5,7 @@ import uuid
 import requests
 from sqlalchemy.orm import Session
 from common.models import User, UserSubscription, Transaction, Subscription
-from config import SessionLocal, TBANK_KASSA_PASSWORD, TBANK_KASSA_TERMINAL, logger
+from config import IS_DEMO, SessionLocal, TBANK_KASSA_PASSWORD, TBANK_KASSA_TERMINAL, logger
 from datetime import datetime, timedelta
 
 import hashlib
@@ -113,6 +113,10 @@ def get_payment_info_from_tinkoff(payment_id: str):
     :param payment_id: Идентификатор платежа.
     :return: Ответ от Тинькофф в формате JSON или None в случае ошибки.
     """
+    if IS_DEMO:
+        logger.info("Payment state request skipped in demo mode")
+        return {"Success": True, "Status": "CONFIRMED", "PaymentId": payment_id, "Demo": True}
+
     url = "https://securepay.tinkoff.ru/v2/GetState"
     data = {
         "TerminalKey": TBANK_KASSA_TERMINAL,
