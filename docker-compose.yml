@@ -1,4 +1,3 @@
-version: '3'
 services:
   redis:
     image: redis:latest
@@ -56,10 +55,12 @@ services:
       - PYTHONPATH=/app
       - REDIS_HOST=redis
       - REDIS_PORT=6379
+      - FIREBASE_CREDENTIALS_PATH=/run/secrets/firebase-admin.json
     volumes:
       - ./push_app:/app
       - ./common:/app/common
       - ./config.py:/app/config.py
+      - ./swipe-23679-firebase-adminsdk-3o5vv-426a33fe6a.json:/run/secrets/firebase-admin.json:ro
     networks:
       - swipe_network
     env_file:

@@ -11,7 +11,7 @@ class SubscriptionBase(BaseModel):
     is_active: bool
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class SubscriptionCreate(SubscriptionBase):
@@ -22,7 +22,7 @@ class SubscriptionInDBBase(SubscriptionBase):
     id: int
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class SubscriptionSchema(SubscriptionInDBBase):

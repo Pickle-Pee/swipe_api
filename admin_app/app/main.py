@@ -1,12 +1,9 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from config import Base, engine
 from .routers import auth, admin, users, interests, transactions, subscriptions, user_subscriptions
 
 # Создание всех таблиц (используйте Alembic для миграций в продакшене)
-Base.metadata.create_all(bind=engine)
-
 app = FastAPI(
     title="Admin API for Dating Service",
     description="API для администрирования сервиса знакомств",

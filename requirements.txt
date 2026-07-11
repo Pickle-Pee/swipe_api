@@ -15,7 +15,8 @@ eventlet
 websocket-client
 boto3
 python-multipart
-python-magic
+python-magic; sys_platform != "win32"
+python-magic-bin; sys_platform == "win32"
 dadata
 asyncpg
 joblib
@@ -46,6 +47,8 @@ googleapis-common-protos
 transliterate
 openai==1.37.0
 pillow
+face-recognition
+setuptools<81
 python-multipart
 cryptography
 redis

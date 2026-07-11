@@ -151,6 +151,7 @@ Thumbs.db
 
 # Firebase credentials
 swipe-5da7e-firebase-adminsdk-uiosd-e4d43db1df.json
+*-firebase-adminsdk-*.json
 
 # Other sensitive or temporary files
 *.pem

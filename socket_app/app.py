@@ -7,7 +7,7 @@ from urllib.parse import parse_qs
 # Импорт необходимых моделей и утилит
 from common.models import User, Chat, Message, Media, DateInvitations, MessageTypeEnum, VoiceMessage
 from common.utils import get_user_id_from_token, send_push_notification, get_user_push_token, get_user_name
-from config import SessionLocal, logger, engine, socketio_logger, Base, add_cors, redis_client
+from config import SessionLocal, logger, socketio_logger, add_cors, redis_client
 
 # Импорт FastAPI и Socket.IO
 import jwt
@@ -75,8 +75,6 @@ async def _delete_related_entities(db, chat_id):
 
 # Обработчик события запуска приложения
 async def startup_event():
-    # Создание всех таблиц в базе данных при старте приложения
-    Base.metadata.create_all(bind=engine)
     asyncio.create_task(listen_for_verification_updates())
 
 @sio.event

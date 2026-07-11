@@ -18,11 +18,9 @@ WORKDIR /app
 
 # Копируем только необходимые файлы
 COPY requirements.txt /app/
-COPY wheels/ /app/wheels/
 
 # Устанавливаем зависимости
-RUN pip install --no-cache-dir /app/wheels/*.whl \
-    && pip install --no-cache-dir --trusted-host pypi.python.org -r /app/requirements.txt
+RUN pip install --no-cache-dir --trusted-host pypi.python.org -r /app/requirements.txt
 
 # **Не копируем исходный код, так как он будет монтироваться через volumes**
 
