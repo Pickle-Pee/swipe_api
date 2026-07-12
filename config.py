@@ -7,6 +7,7 @@ from sqlalchemy.orm import sessionmaker, declarative_base
 from dotenv import load_dotenv
 import os
 import logging
+from safe_logging import configure_safe_logging
 import boto3
 import redis
 from pathlib import Path
@@ -114,6 +115,7 @@ TKASSA_PUBLIC_KEY = "tkassa_public.pem"
 # Logging configuration
 
 logging.basicConfig(level=logging.DEBUG)
+configure_safe_logging()
 # logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
 logger = logging.getLogger(__name__)
 

@@ -1,5 +1,4 @@
 import os
-import traceback
 from datetime import datetime
 import magic
 from fastapi.responses import JSONResponse
@@ -98,14 +97,14 @@ def get_refreshed_token(refresh_token: str):
                 "user_id": user.id
             }
             new_access_token = create_access_token(new_token_data)
-            print(new_access_token)
+            logger.info("Access token refreshed for user_id=%s", user.id)
             return TokenResponse(access_token=f"Bearer {new_access_token}", refresh_token=new_refresh_token)
         except jwt.ExpiredSignatureError:
             raise HTTPException(status_code=401, detail="Expired refresh token")
         except jwt.DecodeError:
             raise HTTPException(status_code=401, detail="Invalid token")
-        except Exception as e:
-            logger.error(f"Error refreshing token: {str(e)}")
+        except Exception:
+            logger.exception("Token refresh failed")
             raise HTTPException(status_code=500, detail="Internal server error")
 
 
@@ -123,8 +122,8 @@ def check_verification_code(phone_number: str, verification_code: str):
                 error_response = ErrorResponse(detail="Неверный код авторизации.", code=604)
                 return JSONResponse(content=error_response.dict(), status_code=400)
 
-        except Exception as e:
-            print("Error checking verification code:", e)
+        except Exception:
+            logger.exception("Verification code check failed")
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                                 detail="Error checking verification code")
 
@@ -148,8 +147,8 @@ def validate_phone(phone_number: str):
             error_response = ErrorResponse(detail="Пользователь зарегистрирован.", code=612)
             return JSONResponse(content=error_response.dict(), status_code=400)
 
-        except Exception as e:
-            print("Error validating phone number:", e)
+        except Exception:
+            logger.exception("Phone validation failed")
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                                 detail="Error validating phone number")
 
@@ -254,9 +253,8 @@ def register(user_data: UserCreate):
 
         except HTTPException as he:
             raise he
-        except Exception as e:
-            print("Error registering user:", e)
-            traceback.print_exc()
+        except Exception:
+            logger.exception("User registration failed")
             raise HTTPException(status_code=500, detail="Error registering user")
 
 
@@ -308,8 +306,8 @@ def login(phone_number: str, code: str):
             return token_response
         except HTTPException as he:
             raise he
-        except Exception as e:
-            print("Error logging in:", e)
+        except Exception:
+            logger.exception("User login failed")
             raise HTTPException(status_code=500, detail="Error logging in")
 
 

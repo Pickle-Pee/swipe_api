@@ -974,7 +974,9 @@ async def send_date_invitation(sid, data):
                     "content-available": 1
                 }
             )
-            socketio_logger.info(f"Push notification sent to recipient ID {recipient_id} with token {push_token}")
+            socketio_logger.info(
+                f"Push notification sent to recipient ID {recipient_id}"
+            )
 
         # Отправляем подтверждение отправителю
         await sio.emit(
@@ -1071,7 +1073,9 @@ async def respond_date_invitation(sid, data):
                         "content-available": 1
                     }
                 )
-                socketio_logger.info(f"Push notification sent to initiator ID {recipient_id} with token {push_token}")
+                socketio_logger.info(
+                    f"Push notification sent to initiator ID {recipient_id}"
+                )
             socketio_logger.info(f"Date response {response} sent to initiator ID {recipient_id} via socket")
 
 async def send_scheduled_notification():

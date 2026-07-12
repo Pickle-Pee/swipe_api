@@ -36,6 +36,7 @@ from common.services import (
     TBankInitRequest,
     generate_tbank_token,
 )
+from safe_logging import mask_identifier
 from config import (
     IS_DEMO,
     IS_PRODUCTION,
@@ -349,6 +350,11 @@ async def create_checkout(
             transaction.bank_status = "NEW"
             db.commit()
             db.refresh(transaction)
+            logger.info(
+                "payment_checkout_initialized operation=demo order_id=%s payment_id=%s status=pending",
+                order_id,
+                mask_identifier(transaction.payment_id),
+            )
             return _checkout_response(transaction)
 
         try:
@@ -365,6 +371,12 @@ async def create_checkout(
             transaction.error_code = exc.code[:64]
             transaction.error_message = "Payment provider could not initialize payment"
             db.commit()
+            logger.warning(
+                "payment_checkout_init_failed order_id=%s error_code=%s retryable=%s",
+                order_id,
+                exc.code[:64],
+                exc.retryable,
+            )
             raise HTTPException(
                 status_code=503 if exc.retryable else 502,
                 detail="payment_provider_unavailable"
@@ -376,6 +388,12 @@ async def create_checkout(
         transaction.bank_status = result.status
         db.commit()
         db.refresh(transaction)
+        logger.info(
+            "payment_checkout_initialized operation=init order_id=%s payment_id=%s status=%s",
+            order_id,
+            mask_identifier(transaction.payment_id),
+            transaction.bank_status,
+        )
         return _checkout_response(transaction)
 
 
@@ -607,9 +625,11 @@ async def handle_tbank_webhook(request: Request):
     if not TBANK_TERMINAL_KEY or not TBANK_TERMINAL_PASSWORD:
         raise HTTPException(status_code=503, detail="payment_provider_not_configured")
     if not hmac.compare_digest(str(payload["TerminalKey"]), TBANK_TERMINAL_KEY):
+        logger.warning("payment_webhook_rejected reason=invalid_terminal")
         raise HTTPException(status_code=403, detail="invalid_webhook_terminal")
     expected_token = generate_tbank_token(payload, TBANK_TERMINAL_PASSWORD)
     if not hmac.compare_digest(str(payload["Token"]), expected_token):
+        logger.warning("payment_webhook_rejected reason=invalid_token")
         raise HTTPException(status_code=403, detail="invalid_webhook_token")
 
     payment_id = str(payload["PaymentId"])
@@ -665,6 +685,13 @@ async def handle_tbank_webhook(request: Request):
         except IntegrityError:
             db.rollback()
             return PlainTextResponse("OK")
+    logger.info(
+        "payment_webhook_processed order_id=%s payment_id=%s status=%s result=%s",
+        order_id,
+        mask_identifier(payment_id),
+        bank_status,
+        result,
+    )
     return PlainTextResponse("OK")
 
 
@@ -707,7 +734,7 @@ async def init_payment(request: Request, access_token: str = Depends(get_token))
         try:
             subscription_id = int(subscription_id)
         except ValueError:
-            logger.error(f"Invalid subscription_id format: {subscription_id}")
+            logger.error("Legacy payment request has invalid subscription_id")
             raise HTTPException(
                 status_code=400, detail="Invalid subscription_id format"
             )
@@ -743,9 +770,9 @@ async def init_payment(request: Request, access_token: str = Depends(get_token))
 
     try:
         token = generate_init_token(init_params, TBANK_KASSA_PASSWORD)
-    except ValueError as ve:
-        logger.error(f"Token generation error: {ve}")
-        raise HTTPException(status_code=400, detail=str(ve))
+    except ValueError:
+        logger.error("Legacy payment token generation failed")
+        raise HTTPException(status_code=400, detail="Payment configuration error")
 
     init_params["Token"] = token
 
@@ -763,7 +790,7 @@ async def init_payment(request: Request, access_token: str = Depends(get_token))
             try:
                 payment_id = int(payment_id_str)
             except (ValueError, TypeError):
-                logger.error(f"Invalid PaymentId format: {payment_id_str}")
+                logger.error("Legacy Init returned an invalid PaymentId")
                 raise HTTPException(
                     status_code=400, detail="Invalid PaymentId format from Tinkoff"
                 )
@@ -784,22 +811,22 @@ async def init_payment(request: Request, access_token: str = Depends(get_token))
                 try:
                     db.commit()
                     db.refresh(new_transaction)
-                except IntegrityError as ie:
+                except IntegrityError:
                     db.rollback()
-                    logger.error(f"Database IntegrityError: {ie}")
+                    logger.error("Legacy payment transaction integrity error")
                     raise HTTPException(
                         status_code=400,
                         detail="Integrity error while saving transaction.",
                     )
-                except DataError as de:
+                except DataError:
                     db.rollback()
-                    logger.error(f"Database DataError: {de}")
+                    logger.error("Legacy payment transaction data error")
                     raise HTTPException(
                         status_code=400, detail="Data error while saving transaction."
                     )
-                except Exception as e:
+                except Exception:
                     db.rollback()
-                    logger.exception(f"Unexpected error while saving transaction: {e}")
+                    logger.exception("Legacy payment transaction persistence failed")
                     raise HTTPException(
                         status_code=500, detail="Internal server error."
                     )
@@ -815,16 +842,15 @@ async def init_payment(request: Request, access_token: str = Depends(get_token))
             }
         else:
             error_code = response_data.get("ErrorCode", "UNKNOWN_ERROR")
-            error_message = response_data.get("Message", "Unknown error")
-            logger.error(f"Tinkoff Init Error: {error_code} - {error_message}")
+            logger.error("Legacy Init rejected error_code=%s", error_code)
             raise HTTPException(
-                status_code=400, detail=f"Failed to initialize payment: {error_message}"
+                status_code=400, detail="Failed to initialize payment"
             )
-    except requests.RequestException as e:
-        logger.exception(f"HTTP request to Tinkoff Init failed: {e}")
+    except requests.RequestException:
+        logger.exception("Legacy Init transport failed")
         raise HTTPException(
             status_code=502, detail="Failed to communicate with payment provider."
         )
-    except Exception as e:
-        logger.exception(f"Exception during payment initialization: {e}")
+    except Exception:
+        logger.exception("Legacy payment initialization failed")
         raise HTTPException(status_code=500, detail="Internal server error.")

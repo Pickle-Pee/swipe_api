@@ -140,6 +140,8 @@ alembic check
 
 ## 10. Логи и безопасность
 
+REM-02 добавила единый `safe_logging` filter/formatter для backend handlers. Он рекурсивно редактирует structured mappings, positional arguments, Bearer/JWT и exception text. Канонические checkout/webhook логи содержат только operation, внутренний order id, маскированный payment id, status и safe error code.
+
 - Не логировать Password, Token, PAN, ExpDate, CardId, RebillId, телефон, Receipt, полный webhook/Init body и query PaymentURL.
 - Логировать request/order/payment correlation ids, внутренний status, safe error code и длительность.
 - Не возвращать банковские secrets в API и Flutter.

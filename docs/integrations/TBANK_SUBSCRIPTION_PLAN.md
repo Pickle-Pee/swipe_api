@@ -2,7 +2,7 @@
 
 Статус: контракт зафиксирован, backend SUB-02/SUB-03 реализован. Проверено 2026-07-13. Backend OpenAPI — источник истины. Flutter-копия контракта: `swipe_mobile_re/docs/contracts/SUBSCRIPTION_API.md`.
 
-> Обновление 2026-07-13: SUB-02 и SUB-03 реализованы. Добавлены canonical catalog/checkout/status/active/cancel endpoints, T-Bank client, проверяемый `/subscriptions/webhooks/tbank`, монотонные переходы, audit fingerprints и атомарная однократная активация. REM-01 удалила legacy Charge path из scheduler: автоматически запускается только безопасная идемпотентная деактивация истёкших подписок, а ручной legacy renewal возвращает контролируемую ошибку. Полноценный recurrent billing по-прежнему не реализован. Разделы «текущее состояние» ниже сохраняют исходный аудит legacy-кода.
+> Обновление 2026-07-13: SUB-02 и SUB-03 реализованы. Добавлены canonical catalog/checkout/status/active/cancel endpoints, T-Bank client, проверяемый `/subscriptions/webhooks/tbank`, монотонные переходы, audit fingerprints и атомарная однократная активация. REM-01 удалила legacy Charge path из scheduler: автоматически запускается только безопасная идемпотентная деактивация истёкших подписок, а ручной legacy renewal возвращает контролируемую ошибку. REM-02 добавила единый backend redaction layer и безопасные checkout/webhook/auth логи без Token, RebillId и полного PaymentURL. Полноценный recurrent billing по-прежнему не реализован. Разделы «текущее состояние» ниже сохраняют исходный аудит legacy-кода.
 
 ## 1. Текущее состояние backend
 
