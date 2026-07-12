@@ -49,13 +49,13 @@ docker compose up --build
 
 ### Тестовый терминал Т-Банка
 
-Используйте выданный TerminalKey с суффиксом `DEMO`, его пароль и обычный endpoint `https://securepay.tinkoff.ru/v2`. Плановая конфигурация — `APP_ENV=development`, реальные публичные HTTPS callback URL и отдельная тестовая БД. `APP_ENV=demo` здесь не подходит: он намеренно блокирует внешнего провайдера. До запуска обязательно закройте legacy scheduler/init blockers из раздела 11: текущий non-demo runtime небезопасен для банковского терминала.
+Используйте выданный TerminalKey с суффиксом `DEMO`, его пароль и обычный endpoint `https://securepay.tinkoff.ru/v2`. Плановая конфигурация — `APP_ENV=development`, реальные публичные HTTPS callback URL и отдельная тестовая БД. `APP_ENV=demo` здесь не подходит: он намеренно блокирует внешнего провайдера. До запуска обязательно закройте оставшийся legacy init blocker из раздела 11.
 
 В кабинете терминала тип платежа должен совпадать с Init. Текущая интеграция рассчитана на одностадийную оплату `PayType=O`: entitlement выдаётся на `CONFIRMED`. Пройдите группы тестов «Общие» и «Формирование чека». «Автоплатежи» проходите только после отдельного подключения recurring и согласия пользователя.
 
 ### Production
 
-`APP_ENV=production` включает fail-fast обязательных секретов. Используйте отдельные production TerminalKey/Password, production БД и HTTPS callbacks. Само значение `TBANK_RECURRENT_ENABLED=false` пока недостаточно: legacy scheduler не читает этот flag. Production запуск запрещён до устранения blockers из раздела 11.
+`APP_ENV=production` включает fail-fast обязательных секретов. Используйте отдельные production TerminalKey/Password, production БД и HTTPS callbacks. Legacy Charge удалён из scheduler в REM-01; `TBANK_RECURRENT_ENABLED` не включает автоматические списания без отдельной будущей реализации. Production запуск по-прежнему запрещён до устранения остальных blockers из раздела 11.
 
 ## 4. NotificationURL, SuccessURL и FailURL
 
@@ -116,7 +116,7 @@ Token проверяется по правилам Т-Банка: исключи
 
 Для сохранения реквизитов родительский card payment требует `Recurrent=Y`, `CustomerKey` и корректный `OperationInitiatorType`; дочерний MIT recurring использует сохранённый RebillId и тип `R`. Перед включением нужны договорённость с банком, явное согласие пользователя, политика отмены, безопасное хранение идентификаторов и отдельная реализация Charge.
 
-В репозитории остаётся legacy `common/utils/scheduler.py`, который вне demo ставит `auto_renew_subscriptions` в расписание независимо от `TBANK_RECURRENT_ENABLED`, вызывает старый Charge path и выводит RebillId в лог. Это не часть принятой архитектуры и P0 blocker для любого non-demo запуска. До remediation разрешён только `APP_ENV=demo`; недостаточно просто установить feature flag в `false`.
+После REM-01 scheduler регистрирует только `deactivate_expired_subscriptions`. Эта операция не читает RebillId, не создаёт Transaction, не продлевает срок и не выполняет HTTP. Истёкшая подписка идемпотентно получает `is_active=false`, `renewable=false` и `next_billing_date=null`. Compatibility-вызов `auto_renew_subscriptions` всегда завершается контролируемым `RecurrentBillingDisabledError` до чтения БД или сети. Feature flag не активирует незавершённый billing.
 
 ## 9. Миграции
 
@@ -149,13 +149,12 @@ alembic check
 
 ## 11. Обязательные blockers до test-terminal и production
 
-1. Удалить либо полностью feature-gate legacy `auto_renew_subscriptions` и Charge path; expiry maintenance отделить от billing scheduler. Удалить логирование RebillId и добавить тест, что при выключенном recurring нет банковской сети.
-2. Удалить или закрыть legacy `POST /subscriptions/init_payment`: endpoint принимает `amount`, OrderId и CustomerKey от клиента и обходит canonical server-priced checkout. После подтверждения отсутствия потребителей вернуть `410` на переходный период либо удалить route; добавить compatibility note и security test.
-3. Удалить неиспользуемые Flutter `SubscriptionHttp`, `PaymentService` и `SubscriptionServices`, которые всё ещё содержат вызов legacy init endpoint и прямое legacy поведение.
-4. Закрыть legacy Flutter logging: ряд старых network classes печатает полные response bodies, включая auth refresh response. Перевести их на `SafeApiLogInterceptor` или удалить вместе с неиспользуемым кодом.
-5. После исправлений повторить весь SUB-05 E2E, test-terminal сценарии и repository secret scan.
+1. Удалить или закрыть legacy `POST /subscriptions/init_payment`: endpoint принимает `amount`, OrderId и CustomerKey от клиента и обходит canonical server-priced checkout. После подтверждения отсутствия потребителей вернуть `410` на переходный период либо удалить route; добавить compatibility note и security test.
+2. Удалить неиспользуемые Flutter `SubscriptionHttp`, `PaymentService` и `SubscriptionServices`, которые всё ещё содержат вызов legacy init endpoint и прямое legacy поведение.
+3. Закрыть legacy Flutter logging: ряд старых network classes печатает полные response bodies, включая auth refresh response. Перевести их на `SafeApiLogInterceptor` или удалить вместе с неиспользуемым кодом.
+4. После исправлений повторить весь SUB-05 E2E, test-terminal сценарии и repository secret scan.
 
-Пока эти пункты не выполнены, статус поставки: **demo ready, non-demo blocked**.
+REM-01 закрыла legacy auto-renew P0. Пока остальные пункты не выполнены, статус поставки: **demo ready, non-demo blocked**.
 
 ## 12. Production checklist
 
