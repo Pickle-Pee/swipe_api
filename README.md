@@ -103,9 +103,22 @@ Pop-Location
 
 ```powershell
 alembic upgrade head
+alembic current
+alembic check
 ```
 
-Не запускайте миграции на URL из неизвестного `.env`. Проверка существующей цепочки миграций на новой локальной PostgreSQL будет выполнена отдельной задачей.
+Для создания следующей миграции и отката одного шага:
+
+```powershell
+alembic revision --autogenerate -m "описание изменения"
+alembic downgrade -1
+```
+
+Alembic требует `ENVIRONMENT=dev` и `ALEMBIC_DEV_URL` (либо
+`ENVIRONMENT=prod` и `ALEMBIC_PROD_URL`). Не запускайте миграции на URL из
+неизвестного `.env`. Активная baseline-миграция находится в
+`alembic/current_versions`; прежняя неполная история сохранена в
+`alembic/versions` только для аудита и не выполняется.
 
 ## Docker Compose
 
@@ -121,7 +134,11 @@ docker compose config --quiet
 docker compose up --build
 ```
 
-Compose поднимает PostgreSQL 16, Redis 7, main, socket, push и admin API. PostgreSQL, Redis и все приложения имеют healthchecks; приложения ожидают готовности инфраструктуры. Данные PostgreSQL, Redis и локальные demo-файлы хранятся в named volumes.
+Compose поднимает PostgreSQL 16, Redis 7, одноразовый сервис `migrate`, main,
+socket, push и admin API. `migrate` выполняет `alembic upgrade head` после
+готовности PostgreSQL; приложения запускаются только после успешной миграции.
+PostgreSQL, Redis и все приложения имеют healthchecks. Данные PostgreSQL,
+Redis и локальные demo-файлы хранятся в named volumes.
 
 Проверка состояния и логов:
 
@@ -142,4 +159,5 @@ docker compose down
 docker compose down --volumes --remove-orphans
 ```
 
-Автоматическое создание таблиц намеренно отсутствует. До завершения следующей задачи с миграциями контейнеры могут быть healthy, но API, которым нужна схема БД, не заработают на пустой базе.
+Автоматическое создание таблиц через SQLAlchemy намеренно отсутствует. Схемой
+управляет только Alembic через сервис `migrate`.

@@ -16,6 +16,8 @@ x-app-depends-on: &app-depends-on
     condition: service_healthy
   redis:
     condition: service_healthy
+  migrate:
+    condition: service_completed_successfully
 
 services:
   postgres:
@@ -50,6 +52,21 @@ services:
       timeout: 3s
       retries: 10
     restart: unless-stopped
+    networks:
+      - swipe_network
+
+  migrate:
+    build:
+      context: .
+      dockerfile: main_app/Dockerfile
+    command: ["python", "-m", "alembic", "upgrade", "head"]
+    environment: *app-environment
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
     networks:
       - swipe_network
 
