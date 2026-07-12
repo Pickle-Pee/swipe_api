@@ -49,7 +49,7 @@ docker compose up --build
 
 ### Тестовый терминал Т-Банка
 
-Используйте выданный TerminalKey с суффиксом `DEMO`, его пароль и обычный endpoint `https://securepay.tinkoff.ru/v2`. Плановая конфигурация — `APP_ENV=development`, реальные публичные HTTPS callback URL и отдельная тестовая БД. `APP_ENV=demo` здесь не подходит: он намеренно блокирует внешнего провайдера. До запуска обязательно закройте оставшийся legacy init blocker из раздела 11.
+Используйте выданный TerminalKey с суффиксом `DEMO`, его пароль и обычный endpoint `https://securepay.tinkoff.ru/v2`. Плановая конфигурация — `APP_ENV=development`, реальные публичные HTTPS callback URL и отдельная тестовая БД. `APP_ENV=demo` здесь не подходит: он намеренно блокирует внешнего провайдера. Legacy backend init закрыт REM-03; до запуска закройте оставшиеся Flutter blockers из раздела 11.
 
 В кабинете терминала тип платежа должен совпадать с Init. Текущая интеграция рассчитана на одностадийную оплату `PayType=O`: entitlement выдаётся на `CONFIRMED`. Пройдите группы тестов «Общие» и «Формирование чека». «Автоплатежи» проходите только после отдельного подключения recurring и согласия пользователя.
 
@@ -151,12 +151,11 @@ REM-02 добавила единый `safe_logging` filter/formatter для back
 
 ## 11. Обязательные blockers до test-terminal и production
 
-1. Удалить или закрыть legacy `POST /subscriptions/init_payment`: endpoint принимает `amount`, OrderId и CustomerKey от клиента и обходит canonical server-priced checkout. После подтверждения отсутствия потребителей вернуть `410` на переходный период либо удалить route; добавить compatibility note и security test.
-2. Удалить неиспользуемые Flutter `SubscriptionHttp`, `PaymentService` и `SubscriptionServices`, которые всё ещё содержат вызов legacy init endpoint и прямое legacy поведение.
-3. Закрыть legacy Flutter logging: ряд старых network classes печатает полные response bodies, включая auth refresh response. Перевести их на `SafeApiLogInterceptor` или удалить вместе с неиспользуемым кодом.
-4. После исправлений повторить весь SUB-05 E2E, test-terminal сценарии и repository secret scan.
+1. Удалить неиспользуемые Flutter `SubscriptionHttp`, `PaymentService` и `SubscriptionServices`, которые всё ещё содержат вызов legacy init endpoint и прямое legacy поведение.
+2. Закрыть legacy Flutter logging: ряд старых network classes печатает полные response bodies, включая auth refresh response. Перевести их на `SafeApiLogInterceptor` или удалить вместе с неиспользуемым кодом.
+3. После исправлений повторить весь SUB-05 E2E, test-terminal сценарии и repository secret scan.
 
-REM-01 закрыла legacy auto-renew P0. Пока остальные пункты не выполнены, статус поставки: **demo ready, non-demo blocked**.
+REM-01 закрыла legacy auto-renew P0, REM-02 — backend logging, REM-03 — небезопасный legacy init. `POST /subscriptions/init_payment` один переходный релиз остаётся deprecated guard с безусловным `410`, после чего route удаляется. Пока остальные пункты не выполнены, статус поставки: **demo ready, non-demo blocked**.
 
 ## 12. Production checklist
 

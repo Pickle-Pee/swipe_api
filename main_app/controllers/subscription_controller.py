@@ -695,9 +695,23 @@ async def handle_tbank_webhook(request: Request):
     return PlainTextResponse("OK")
 
 
-@router.post("/init_payment", summary="Инициализация платежа")
-async def init_payment(request: Request, access_token: str = Depends(get_token)):
-    data = await request.json()
+@router.post(
+    "/init_payment",
+    summary="Удалённый legacy endpoint оплаты",
+    deprecated=True,
+)
+async def init_payment():
+    raise HTTPException(
+        status_code=410,
+        detail={
+            "code": "LEGACY_PAYMENT_ENDPOINT_REMOVED",
+            "message": "Use POST /subscriptions/checkout",
+        },
+    )
+
+    # Compatibility source is intentionally unreachable during the one-release
+    # 410 window and will be deleted together with this route in the next release.
+    data = await request.json()  # noqa: F821 - unreachable compatibility source
     logger.info("Payment initialization request received")
 
     # Проверка обязательных параметров, исключая email
@@ -718,7 +732,9 @@ async def init_payment(request: Request, access_token: str = Depends(get_token))
         }
 
     with SessionLocal() as db:
-        user_id = get_user_id_from_token(access_token)
+        user_id = get_user_id_from_token(
+            access_token  # noqa: F821 - unreachable compatibility source
+        )
         user = db.query(User).filter(User.id == user_id).first()
         if user is None:
             raise HTTPException(status_code=404, detail="User not found")

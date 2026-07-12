@@ -2,7 +2,7 @@
 
 Статус: контракт зафиксирован, backend SUB-02/SUB-03 реализован. Проверено 2026-07-13. Backend OpenAPI — источник истины. Flutter-копия контракта: `swipe_mobile_re/docs/contracts/SUBSCRIPTION_API.md`.
 
-> Обновление 2026-07-13: SUB-02 и SUB-03 реализованы. Добавлены canonical catalog/checkout/status/active/cancel endpoints, T-Bank client, проверяемый `/subscriptions/webhooks/tbank`, монотонные переходы, audit fingerprints и атомарная однократная активация. REM-01 удалила legacy Charge path из scheduler: автоматически запускается только безопасная идемпотентная деактивация истёкших подписок, а ручной legacy renewal возвращает контролируемую ошибку. REM-02 добавила единый backend redaction layer и безопасные checkout/webhook/auth логи без Token, RebillId и полного PaymentURL. Полноценный recurrent billing по-прежнему не реализован. Разделы «текущее состояние» ниже сохраняют исходный аудит legacy-кода.
+> Обновление 2026-07-13: SUB-02 и SUB-03 реализованы. Добавлены canonical catalog/checkout/status/active/cancel endpoints, T-Bank client, проверяемый `/subscriptions/webhooks/tbank`, монотонные переходы, audit fingerprints и атомарная однократная активация. REM-01 удалила legacy Charge path из scheduler: автоматически запускается только безопасная идемпотентная деактивация истёкших подписок, а ручной legacy renewal возвращает контролируемую ошибку. REM-02 добавила единый backend redaction layer и безопасные checkout/webhook/auth логи без Token, RebillId и полного PaymentURL. REM-03 закрыла legacy `POST /subscriptions/init_payment`: в течение переходного релиза route помечен deprecated и безусловно возвращает `410 Gone`, не читая body, не обращаясь к БД или банку; затем route удаляется полностью. Единственный способ создать платёж — server-priced `POST /subscriptions/checkout`. Полноценный recurrent billing по-прежнему не реализован. Разделы «текущее состояние» ниже сохраняют исходный аудит legacy-кода.
 
 ## 1. Текущее состояние backend
 
@@ -17,11 +17,11 @@
 | POST | `/subscriptions/cancel` | Auth; `renewable=false` у первой активной записи. |
 | POST | `/subscriptions/promo_activate` | Auth; hard-coded plan 999 и 30 дней. |
 | POST | `/subscriptions/webhook/tinkoff` | Без auth; Token не проверяет; JSON-ответ вместо `OK`. |
-| POST | `/subscriptions/init_payment` | Auth; raw JSON; Init банка; доверяет полям клиента. |
+| POST | `/subscriptions/init_payment` | Deprecated compatibility guard: безусловный `410 Gone`; body/auth не требуются и не обрабатываются, БД и банк не вызываются. Удалить route после одного переходного релиза. |
 
 Admin read-only: `/admin/subscriptions/`, `/admin/transactions/`, `/admin/user_subscriptions/`; последний ошибочно использует DTO тарифа для `UserSubscription`. Flutter вызывает отсутствующий `/subscriptions/activate_subscription`.
 
-`init_payment` принимает `orderId`, `amount`, `customerKey`, `phone`, `subscriptionId`, вычисляет копейки из клиентского `double`, всегда передает `Recurrent=Y`, `PayType=O`, hard-coded receipt. В demo возвращает `demo://payment/success`, не создавая transaction. В остальных режимах transaction создается лишь после Init.
+До REM-03 `init_payment` принимал `orderId`, `amount`, `customerKey`, `phone`, `subscriptionId`, вычислял копейки из клиентского `double`, всегда передавал `Recurrent=Y`, `PayType=O` и hard-coded receipt. Этот business path больше недостижим: compatibility route возвращает `410` с `detail.code=LEGACY_PAYMENT_ENDPOINT_REMOVED`. Канонический checkout принимает только `subscription_id`, а сумму получает из тарифа backend.
 
 `generate_init_token` вручную подписывает фиксированный набор. `generate_webhook_token` применяется к GetState и подписывает только Password/PaymentId/TerminalKey. Оба расходятся с универсальным алгоритмом банка. `generate_token` незавершен и ничего не возвращает. `GetState` не подключен к пользовательскому API.
 
