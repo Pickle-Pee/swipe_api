@@ -99,6 +99,10 @@ class ActiveSubscriptionResponseItem(BaseModel):
     renewable: bool
 
 
+class ActiveSubscriptionResponse(BaseModel):
+    subscription: Optional[ActiveSubscriptionResponseItem] = None
+
+
 class PaymentStatusResponse(BaseModel):
     order_id: str
     payment_id: Optional[str] = None

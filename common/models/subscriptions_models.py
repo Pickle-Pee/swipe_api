@@ -81,9 +81,23 @@ class Transaction(Base):
         DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
     )
     confirmed_at = Column(DateTime, nullable=True)
+    subscription_activated_at = Column(DateTime, nullable=True)
     expires_at = Column(DateTime, nullable=True)
     error_code = Column(String(64), nullable=True)
     error_message = Column(String(255), nullable=True)
 
     user = relationship("User", back_populates="transactions")
     subscription = relationship("Subscription", back_populates="transactions")
+
+
+class PaymentWebhookEvent(Base):
+    __tablename__ = "payment_webhook_events"
+
+    id = Column(Integer, primary_key=True, index=True)
+    payment_id = Column(String, nullable=False, index=True)
+    order_id = Column(String, nullable=False)
+    bank_status = Column(String, nullable=False)
+    event_fingerprint = Column(String(64), nullable=False, unique=True)
+    received_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    processed_at = Column(DateTime, nullable=True)
+    result = Column(String(32), nullable=False)

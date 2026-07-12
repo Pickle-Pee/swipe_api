@@ -13,7 +13,7 @@ from .communication_schemas import (
     ChatDetailsResponse,
     DateInvitationResponse,
     PushMessage,
-    ChatIdResponse
+    ChatIdResponse,
 )
 from .interests_schemas import (
     AddInterestsResponse,
@@ -22,7 +22,7 @@ from .interests_schemas import (
     InterestCreate,
     InterestResponse,
     InterestItem,
-    UserInterestResponse
+    UserInterestResponse,
 )
 from .likes_schemas import Favorite, FavoriteCreate, MatchResponse
 from .service_schemas import CityQuery, VerificationStatus, VerificationUpdate
@@ -44,7 +44,7 @@ from .user_schemas import (
     AddGeolocationRequest,
     UserResponseAdmin,
     UsersResponseAdmin,
-    UsersResponse
+    UsersResponse,
 )
 from .subscriptions_schemas import (
     SubscriptionSchema,
@@ -58,5 +58,6 @@ from .subscriptions_schemas import (
     CheckoutRequest,
     CheckoutResponse,
     ActiveSubscriptionResponseItem,
+    ActiveSubscriptionResponse,
     PaymentStatusResponse,
 )

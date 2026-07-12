@@ -2,30 +2,40 @@ from fastapi import (
     HTTPException,
     APIRouter,
     Depends,
-    BackgroundTasks,
     Request,
     Header,
     Response,
 )
 from psycopg2 import DataError
 from sqlalchemy.exc import IntegrityError
+from fastapi.responses import PlainTextResponse
 
-from common.models import User, Subscription, UserSubscription, Transaction
+from common.models import (
+    User,
+    Subscription,
+    UserSubscription,
+    Transaction,
+    PaymentWebhookEvent,
+)
 from common.utils import (
     get_token,
     get_user_id_from_token,
     generate_init_token,
-    STATUS_HANDLERS,
 )
 from common.schemas import (
     SubscriptionsResponse,
-    TinkoffWebhook,
     SubscriptionPlansResponse,
     CheckoutRequest,
     CheckoutResponse,
     PaymentStatusResponse,
+    ActiveSubscriptionResponse,
 )
-from common.services import TBankClient, TBankClientError, TBankInitRequest
+from common.services import (
+    TBankClient,
+    TBankClientError,
+    TBankInitRequest,
+    generate_tbank_token,
+)
 from config import (
     IS_DEMO,
     IS_PRODUCTION,
@@ -44,6 +54,8 @@ from config import (
 )
 from datetime import datetime, timedelta
 import hashlib
+import hmac
+import json
 import requests
 import uuid
 
@@ -92,6 +104,138 @@ def _tbank_client() -> TBankClient:
         recurrent_enabled=TBANK_RECURRENT_ENABLED,
         timeout_seconds=TBANK_HTTP_TIMEOUT_SECONDS,
     )
+
+
+BANK_STATUS_MAP = {
+    "NEW": "pending",
+    "FORM_SHOWED": "pending",
+    "AUTHORIZING": "processing",
+    "3DS_CHECKING": "processing",
+    "3DS_CHECKED": "processing",
+    "AUTHORIZED": "processing",
+    "CONFIRMING": "processing",
+    "CONFIRMED": "succeeded",
+    "REJECTED": "failed",
+    "AUTH_FAIL": "failed",
+    "DEADLINE_EXPIRED": "failed",
+    "ATTEMPTS_EXPIRED": "failed",
+    "CANCELED": "canceled",
+    "REVERSED": "canceled",
+    "PARTIAL_REVERSED": "canceled",
+    "REFUNDING": "processing",
+    "ASYNC_REFUNDING": "processing",
+    "PARTIAL_REFUNDED": "partially_refunded",
+    "REFUNDED": "refunded",
+}
+
+
+def _can_transition(current: str, target: str) -> bool:
+    if current == target:
+        return True
+    if current == "succeeded":
+        return target in {"partially_refunded", "refunded"}
+    if current == "partially_refunded":
+        return target == "refunded"
+    if current in {"failed", "canceled", "refunded"}:
+        return False
+    rank = {
+        "created": 0,
+        "pending": 1,
+        "requires_action": 1,
+        "processing": 2,
+        "succeeded": 3,
+    }
+    if target in {"failed", "canceled"}:
+        return True
+    return rank.get(target, -1) >= rank.get(current, -1)
+
+
+def _activate_subscription(db, transaction: Transaction, now: datetime) -> None:
+    if transaction.subscription_activated_at is not None:
+        return
+    plan = (
+        db.query(Subscription)
+        .filter(Subscription.id == transaction.subscription_id)
+        .first()
+    )
+    if plan is None:
+        raise RuntimeError("subscription_not_found")
+    _, duration_days, _ = _plan_values(plan)
+    if duration_days <= 0:
+        raise RuntimeError("invalid_subscription_duration")
+    active = (
+        db.query(UserSubscription)
+        .filter(
+            UserSubscription.user_id == transaction.user_id,
+            UserSubscription.subscription_id == transaction.subscription_id,
+            UserSubscription.is_active.is_(True),
+            UserSubscription.end_date > now,
+        )
+        .with_for_update()
+        .first()
+    )
+    if active:
+        active.end_date = active.end_date + timedelta(days=duration_days)
+        active.next_billing_date = active.end_date if active.renewable else None
+    else:
+        active = UserSubscription(
+            user_id=transaction.user_id,
+            subscription_id=transaction.subscription_id,
+            start_date=now,
+            end_date=now + timedelta(days=duration_days),
+            is_active=True,
+            renewable=bool(plan.renewable and TBANK_RECURRENT_ENABLED),
+            next_billing_date=(now + timedelta(days=duration_days))
+            if plan.renewable and TBANK_RECURRENT_ENABLED
+            else None,
+        )
+        db.add(active)
+    user = db.query(User).filter(User.id == transaction.user_id).first()
+    if user:
+        user.is_subscription = True
+    transaction.subscription_activated_at = now
+
+
+def _apply_payment_status(
+    db, transaction: Transaction, bank_status: str, payload: dict
+) -> str:
+    target = BANK_STATUS_MAP.get(bank_status)
+    if target is None:
+        return "ignored_unknown_status"
+    if not _can_transition(transaction.status, target):
+        return "ignored_stale_status"
+    if payload.get("RebillId") is not None:
+        transaction.rebill_id = str(payload["RebillId"])
+    if payload.get("CardId") is not None:
+        transaction.card_id = str(payload["CardId"])
+    transaction.bank_status = bank_status
+    transaction.status = target
+    now = datetime.utcnow()
+    if target == "succeeded":
+        transaction.confirmed_at = transaction.confirmed_at or now
+        _activate_subscription(db, transaction, now)
+        transaction.error_code = None
+        transaction.error_message = None
+    elif target in {"failed", "canceled"}:
+        transaction.error_code = str(payload.get("ErrorCode") or bank_status).lower()[
+            :64
+        ]
+        transaction.error_message = "Payment was not confirmed"
+    return "processed"
+
+
+def _active_subscription_payload(active: UserSubscription | None) -> dict:
+    if active is None:
+        return {"subscription": None}
+    return {
+        "subscription": {
+            "subscription_id": active.subscription_id,
+            "name": active.subscription.name,
+            "start_at": active.start_date,
+            "end_at": active.end_date,
+            "renewable": bool(active.renewable),
+        }
+    }
 
 
 @router.get(
@@ -301,16 +445,17 @@ async def set_demo_payment_result(
         transaction = (
             db.query(Transaction)
             .filter(Transaction.order_id == order_id, Transaction.user_id == user.id)
+            .with_for_update()
             .first()
         )
         if transaction is None:
             raise HTTPException(status_code=404, detail="payment_not_found")
-        transaction.status = "succeeded" if result == "success" else "failed"
-        transaction.bank_status = "CONFIRMED" if result == "success" else "REJECTED"
-        transaction.confirmed_at = datetime.utcnow() if result == "success" else None
-        transaction.error_code = None if result == "success" else "demo_rejected"
-        transaction.error_message = (
-            None if result == "success" else "Demo payment was rejected"
+        bank_status = "CONFIRMED" if result == "success" else "REJECTED"
+        _apply_payment_status(
+            db,
+            transaction,
+            bank_status,
+            {"ErrorCode": "demo_rejected" if result == "failure" else "0"},
         )
         db.commit()
     return await get_checkout_status(order_id, access_token)
@@ -328,65 +473,57 @@ async def get_subscriptions(access_token: str = Depends(get_token)):
         return {"subscriptions": subscriptions}
 
 
-@router.get("/active", summary="Получить активную подписку")
+@router.get(
+    "/active",
+    response_model=ActiveSubscriptionResponse,
+    summary="Получить активную подписку",
+)
 async def get_active_subscription(access_token: str = Depends(get_token)):
     with SessionLocal() as db:
-        user_id = get_user_id_from_token(access_token)
-        user = db.query(User).filter(User.id == user_id).first()
-        if user is None:
-            raise HTTPException(status_code=404, detail="User not found")
-
+        user = _current_user(db, access_token)
         active_subscription = (
             db.query(UserSubscription)
             .filter(
-                UserSubscription.user_id == user_id,
+                UserSubscription.user_id == user.id,
                 UserSubscription.is_active.is_(True),
                 UserSubscription.end_date > datetime.utcnow(),
             )
+            .order_by(UserSubscription.end_date.desc())
             .first()
         )
-
-        if active_subscription is None:
-            return {"message": "No active subscription"}
-
-        return {
-            "subscription_id": active_subscription.subscription_id,
-            "end_date": active_subscription.end_date,
-        }
+        return _active_subscription_payload(active_subscription)
 
 
-@router.post("/cancel", summary="Отменить подписку")
+@router.post(
+    "/cancel",
+    response_model=ActiveSubscriptionResponse,
+    summary="Отменить автоматическое продление",
+)
 async def cancel_subscription(access_token: str = Depends(get_token)):
     """
     Отключает автоматическое продление подписки пользователя.
     Подписка останется активной до наступления end_date.
     """
     with SessionLocal() as db:
-        user_id = get_user_id_from_token(access_token)
-        user = db.query(User).filter(User.id == user_id).first()
-        if user is None:
-            raise HTTPException(status_code=404, detail="User not found")
-
+        user = _current_user(db, access_token)
         active_subscription = (
             db.query(UserSubscription)
             .filter(
-                UserSubscription.user_id == user_id,
+                UserSubscription.user_id == user.id,
                 UserSubscription.is_active.is_(True),
                 UserSubscription.end_date > datetime.utcnow(),
             )
+            .order_by(UserSubscription.end_date.desc())
             .first()
         )
 
         if active_subscription is None:
-            raise HTTPException(
-                status_code=400, detail="No active subscription to cancel"
-            )
-
+            raise HTTPException(status_code=404, detail="active_subscription_not_found")
         active_subscription.renewable = False
-
+        active_subscription.next_billing_date = None
         db.commit()
-
-        return {"message": "Subscription cancellation initiated successfully"}
+        db.refresh(active_subscription)
+        return _active_subscription_payload(active_subscription)
 
 
 @router.post("/promo_activate", summary="Активировать промо-подписку бесплатно")
@@ -449,44 +586,86 @@ async def promo_activate(access_token: str = Depends(get_token)):
         }
 
 
-@router.post("/webhook/tinkoff", summary="Webhook для обработки платежей от Тинькофф")
-async def handle_tinkoff_webhook(
-    webhook: TinkoffWebhook, background_tasks: BackgroundTasks
-):
-    """
-    Обработчик Webhook уведомлений от Тинькофф.
-    """
+@router.post(
+    "/webhooks/tbank", response_class=PlainTextResponse, summary="Webhook Т-Банка"
+)
+@router.post(
+    "/webhook/tinkoff",
+    response_class=PlainTextResponse,
+    include_in_schema=False,
+)
+async def handle_tbank_webhook(request: Request):
+    try:
+        payload = await request.json()
+    except (ValueError, json.JSONDecodeError):
+        raise HTTPException(status_code=400, detail="invalid_webhook_payload")
+    if not isinstance(payload, dict):
+        raise HTTPException(status_code=400, detail="invalid_webhook_payload")
+    required = ("TerminalKey", "OrderId", "PaymentId", "Status", "Amount", "Token")
+    if any(payload.get(field) is None for field in required):
+        raise HTTPException(status_code=400, detail="invalid_webhook_payload")
+    if not TBANK_TERMINAL_KEY or not TBANK_TERMINAL_PASSWORD:
+        raise HTTPException(status_code=503, detail="payment_provider_not_configured")
+    if not hmac.compare_digest(str(payload["TerminalKey"]), TBANK_TERMINAL_KEY):
+        raise HTTPException(status_code=403, detail="invalid_webhook_terminal")
+    expected_token = generate_tbank_token(payload, TBANK_TERMINAL_PASSWORD)
+    if not hmac.compare_digest(str(payload["Token"]), expected_token):
+        raise HTTPException(status_code=403, detail="invalid_webhook_token")
 
-    """
-    TODO: Добавить IP тинька
-    """
-    # client_ip = request.client.host
-    # ALLOWED_IPS = ["185.165.163.3"]
-    #
-    # if client_ip not in ALLOWED_IPS:
-    #     logger.warning(f"Unauthorized IP address: {client_ip}")
-    #     raise HTTPException(status_code=403, detail="Forbidden")
+    payment_id = str(payload["PaymentId"])
+    order_id = str(payload["OrderId"])
+    bank_status = str(payload["Status"]).upper()
+    try:
+        amount_minor = int(payload["Amount"])
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=400, detail="invalid_webhook_amount")
+    canonical = json.dumps(
+        {key: value for key, value in payload.items() if key != "Token"},
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+    fingerprint = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
-    # logger.info(f"Received webhook from {client_ip}: {webhook.dict(by_alias=True)}")
-
-    # Обработка событий
-    status = webhook.Status
-    payment_id = webhook.PaymentId
-
-    if not payment_id:
-        logger.error("Webhook payload missing 'PaymentId'")
-        raise HTTPException(status_code=400, detail="Missing PaymentId")
-
-    # Получаем соответствующий обработчик для статуса
-    handler = STATUS_HANDLERS.get(status)
-    if handler:
-        background_tasks.add_task(handler, str(payment_id), status, webhook.dict())
-    else:
-        logger.warning(
-            f"No handler defined for status {status} for PaymentId {payment_id}"
+    with SessionLocal() as db:
+        duplicate = (
+            db.query(PaymentWebhookEvent)
+            .filter(PaymentWebhookEvent.event_fingerprint == fingerprint)
+            .first()
         )
-
-    return {"message": "Webhook received"}
+        if duplicate:
+            return PlainTextResponse("OK")
+        transaction = (
+            db.query(Transaction)
+            .filter(Transaction.payment_id == payment_id)
+            .with_for_update()
+            .first()
+        )
+        if transaction is None:
+            raise HTTPException(status_code=404, detail="payment_not_found")
+        if transaction.order_id != order_id:
+            raise HTTPException(status_code=400, detail="order_id_mismatch")
+        if transaction.amount_minor != amount_minor:
+            raise HTTPException(status_code=400, detail="amount_mismatch")
+        result = _apply_payment_status(db, transaction, bank_status, payload)
+        now = datetime.utcnow()
+        db.add(
+            PaymentWebhookEvent(
+                payment_id=payment_id,
+                order_id=order_id,
+                bank_status=bank_status,
+                event_fingerprint=fingerprint,
+                received_at=now,
+                processed_at=now,
+                result=result,
+            )
+        )
+        try:
+            db.commit()
+        except IntegrityError:
+            db.rollback()
+            return PlainTextResponse("OK")
+    return PlainTextResponse("OK")
 
 
 @router.post("/init_payment", summary="Инициализация платежа")

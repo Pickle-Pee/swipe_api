@@ -1,6 +1,8 @@
 # План интеграции подписок и Т-Банка
 
-Статус: проектирование; production-код не изменен. Проверено 2026-07-12. Backend OpenAPI после реализации — источник истины. Flutter-копия контракта: `swipe_mobile_re/docs/contracts/SUBSCRIPTION_API.md`.
+Статус: контракт зафиксирован, backend SUB-02/SUB-03 реализован. Проверено 2026-07-13. Backend OpenAPI — источник истины. Flutter-копия контракта: `swipe_mobile_re/docs/contracts/SUBSCRIPTION_API.md`.
+
+> Обновление 2026-07-13: SUB-02 и SUB-03 реализованы. Добавлены canonical catalog/checkout/status/active/cancel endpoints, T-Bank client, проверяемый `/subscriptions/webhooks/tbank`, монотонные переходы, audit fingerprints и атомарная однократная активация. Автоматический Charge/scheduler по-прежнему не реализован. Разделы «текущее состояние» ниже сохраняют исходный аудит legacy-кода.
 
 ## 1. Текущее состояние backend
 

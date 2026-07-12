@@ -124,7 +124,7 @@ def test_payment_status_is_owner_only_and_demo_can_change_result(client):
     )
     assert changed.status_code == 200, changed.text
     assert changed.json()["status"] == "succeeded"
-    assert changed.json()["subscription_activated"] is False
+    assert changed.json()["subscription_activated"] is True
 
 
 def test_checkout_requires_idempotency_key(client):
