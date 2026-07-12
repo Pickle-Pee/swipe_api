@@ -18,6 +18,8 @@ x-app-depends-on: &app-depends-on
     condition: service_healthy
   migrate:
     condition: service_completed_successfully
+  seed:
+    condition: service_completed_successfully
 
 services:
   postgres:
@@ -66,6 +68,23 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    restart: "no"
+    networks:
+      - swipe_network
+
+  seed:
+    build:
+      context: .
+      dockerfile: main_app/Dockerfile
+    command: ["python", "-m", "scripts.seed_demo"]
+    environment: *app-environment
+    env_file:
+      - .env
+    volumes:
+      - demo_storage:/app/.demo_storage
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
     restart: "no"
     networks:
       - swipe_network
