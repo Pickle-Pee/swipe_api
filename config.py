@@ -81,8 +81,17 @@ SMS_CENTER_PASSWORD = os.getenv("SMS_CENTER_PASSWORD")
 MAX_DISTANCE = float(env_value("MAX_DISTANCE", "100") or "100")
 OPEN_API_KEY = os.getenv("OPEN_API_KEY")
 SMS_SENDER = os.getenv("SMS_SENDER")
-TBANK_KASSA_PASSWORD = os.getenv("TBANK_KASSA_PASSWORD")
-TBANK_KASSA_TERMINAL = os.getenv("TBANK_KASSA_TERMINAL")
+TBANK_TERMINAL_PASSWORD = os.getenv("TBANK_TERMINAL_PASSWORD") or os.getenv("TBANK_KASSA_PASSWORD")
+TBANK_TERMINAL_KEY = os.getenv("TBANK_TERMINAL_KEY") or os.getenv("TBANK_KASSA_TERMINAL")
+TBANK_API_BASE_URL = env_value("TBANK_API_BASE_URL", "https://securepay.tinkoff.ru/v2")
+TBANK_NOTIFICATION_URL = os.getenv("TBANK_NOTIFICATION_URL")
+TBANK_SUCCESS_URL = os.getenv("TBANK_SUCCESS_URL")
+TBANK_FAIL_URL = os.getenv("TBANK_FAIL_URL")
+TBANK_RECURRENT_ENABLED = (os.getenv("TBANK_RECURRENT_ENABLED", "false").lower() == "true")
+TBANK_HTTP_TIMEOUT_SECONDS = float(os.getenv("TBANK_HTTP_TIMEOUT_SECONDS", "10"))
+# Temporary compatibility aliases for legacy code. New code uses the names above.
+TBANK_KASSA_PASSWORD = TBANK_TERMINAL_PASSWORD
+TBANK_KASSA_TERMINAL = TBANK_TERMINAL_KEY
 PUSH_URL = env_value("PUSH_URL", "http://localhost:1026/send_push")
 DEMO_STORAGE_DIR = Path(env_value("DEMO_STORAGE_DIR", ".demo_storage") or ".demo_storage")
 DEMO_VERIFICATION_CODE = env_value("DEMO_VERIFICATION_CODE", "000000")
@@ -93,7 +102,7 @@ required_production = required_base + [
     "YANDEX_KEY_ID", "YANDEX_KEY", "BUCKET_MESSAGE_IMAGES",
     "BUCKET_MESSAGE_VOICES", "BUCKET_PROFILE_IMAGES", "BUCKET_VERIFY_IMAGES",
     "SMS_CENTER_LOGIN", "SMS_CENTER_PASSWORD", "SMS_SENDER",
-    "FIREBASE_CREDENTIALS_PATH", "TBANK_KASSA_PASSWORD", "TBANK_KASSA_TERMINAL",
+    "FIREBASE_CREDENTIALS_PATH", "TBANK_TERMINAL_PASSWORD", "TBANK_TERMINAL_KEY",
 ]
 required_names = required_production if IS_PRODUCTION else ([] if IS_DEMO else required_base)
 missing_names = [name for name in required_names if not globals().get(name)]

@@ -52,5 +52,11 @@ from .subscriptions_schemas import (
     SubscriptionCreate,
     SubscriptionInDBBase,
     SubscriptionsResponse,
-    TinkoffWebhook
+    TinkoffWebhook,
+    SubscriptionPlanResponse,
+    SubscriptionPlansResponse,
+    CheckoutRequest,
+    CheckoutResponse,
+    ActiveSubscriptionResponseItem,
+    PaymentStatusResponse,
 )

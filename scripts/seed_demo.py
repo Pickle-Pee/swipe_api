@@ -128,6 +128,10 @@ def seed_demo() -> dict[str, int]:
             subscription.price = price
             subscription.duration = duration
             subscription.features = features
+            subscription.price_minor = round(price * 100)
+            subscription.currency = "RUB"
+            subscription.duration_days = duration
+            subscription.description = features
             subscription.is_active = True
             subscription.renewable = True
 
