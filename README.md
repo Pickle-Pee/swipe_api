@@ -4,6 +4,8 @@ Backend MVP приложения знакомств. Репозиторий со
 
 Текущее техническое состояние и известные блокеры описаны в `docs/BASELINE.md`, продуктовый объём — в `docs/PROJECT_CONTEXT.md`.
 
+Интеграция подписок и Т-Банка описана в `docs/integrations/TBANK_SUBSCRIPTION_PLAN.md`; buyer handoff, переменные окружения и production blockers — в `docs/integrations/TBANK_BUYER_HANDOFF.md`.
+
 ## Требования
 
 - Python 3.11;
