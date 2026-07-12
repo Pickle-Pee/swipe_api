@@ -47,7 +47,7 @@ Demo-путь должен запускаться локально, быть в�
 - `common/utils` — auth/JWT, CRUD, платежи/подписки, SMSC, push/socket helpers, scheduler и matching helpers.
 - `config.py` — общая конфигурация, sync/async SQLAlchemy engines, Redis, Socket.IO и S3 client; создаёт большинство объектов при импорте.
 - `alembic` — управляемые миграции БД.
-- `docker-compose.yml` — Redis и четыре приложения; PostgreSQL в Compose отсутствует.
+- `docker-compose.yml` — PostgreSQL, Redis и четыре приложения с healthchecks и named volumes.
 
 ## Внешние интеграции
 
@@ -62,4 +62,4 @@ Demo-путь должен запускаться локально, быть в�
 - внешний mockapi endpoint для добавления случайных аватаров;
 - OpenAI импортирован в helper matching, сетевой вызов закомментирован.
 
-Текущее состояние этих интеграций не является demo-безопасным: единого конфигурационного переключателя demo/production и набора локальных адаптеров нет.
+Для локального запуска `APP_ENV=demo` отключает внешние SMS, push и платежи и использует локальное файловое хранилище. Production-интеграции сохранены и требуют явных credentials.

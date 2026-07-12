@@ -1,9 +1,55 @@
-services:
+x-app-environment: &app-environment
+  APP_ENV: demo
+  DATABASE_URL: postgresql://swipe:swipe@postgres:5432/swipe_demo
+  ASYNC_DATABASE_URL: postgresql+asyncpg://swipe:swipe@postgres:5432/swipe_demo
+  ALEMBIC_DEV_URL: postgresql://swipe:swipe@postgres:5432/swipe_demo
+  ENVIRONMENT: dev
+  PYTHONPATH: /app
+  MAIN_APP_HOST: 0.0.0.0
+  REDIS_HOST: redis
+  REDIS_PORT: "6379"
+  PUSH_URL: http://push_app:1026/send_push
+  DEMO_STORAGE_DIR: /app/.demo_storage
+
+x-app-depends-on: &app-depends-on
+  postgres:
+    condition: service_healthy
   redis:
-    image: redis:latest
-    container_name: redis
+    condition: service_healthy
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: swipe_demo
+      POSTGRES_USER: swipe
+      POSTGRES_PASSWORD: swipe
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U swipe -d swipe_demo"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    restart: unless-stopped
+    networks:
+      - swipe_network
+
+  redis:
+    image: redis:7-alpine
     ports:
       - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
     networks:
       - swipe_network
 
@@ -13,18 +59,24 @@ services:
       dockerfile: main_app/Dockerfile
     ports:
       - "1024:1024"
-    environment:
-      - PYTHONPATH=/app
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
+    environment: *app-environment
+    env_file:
+      - .env
     volumes:
       - ./main_app:/app
       - ./common:/app/common
       - ./config.py:/app/config.py
+      - demo_storage:/app/.demo_storage
+    depends_on: *app-depends-on
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:1024/health', timeout=2)"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    restart: unless-stopped
     networks:
       - swipe_network
-    env_file:
-      - .env
 
   socket_app:
     build:
@@ -32,18 +84,23 @@ services:
       dockerfile: socket_app/Dockerfile
     ports:
       - "1025:1025"
-    environment:
-      - PYTHONPATH=/app
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
+    environment: *app-environment
+    env_file:
+      - .env
     volumes:
       - ./socket_app:/app
       - ./common:/app/common
       - ./config.py:/app/config.py
+    depends_on: *app-depends-on
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:1025/health', timeout=2)"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    restart: unless-stopped
     networks:
       - swipe_network
-    env_file:
-      - .env
 
   push_app:
     build:
@@ -51,20 +108,23 @@ services:
       dockerfile: push_app/Dockerfile
     ports:
       - "1026:1026"
-    environment:
-      - PYTHONPATH=/app
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
-      - FIREBASE_CREDENTIALS_PATH=/run/secrets/firebase-admin.json
+    environment: *app-environment
+    env_file:
+      - .env
     volumes:
       - ./push_app:/app
       - ./common:/app/common
       - ./config.py:/app/config.py
-      - ./swipe-23679-firebase-adminsdk-3o5vv-426a33fe6a.json:/run/secrets/firebase-admin.json:ro
+    depends_on: *app-depends-on
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:1026/health', timeout=2)"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    restart: unless-stopped
     networks:
       - swipe_network
-    env_file:
-      - .env
 
   admin_app:
     build:
@@ -72,19 +132,29 @@ services:
       dockerfile: admin_app/Dockerfile
     ports:
       - "1027:1027"
-    environment:
-      - PYTHONPATH=/app
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
+    environment: *app-environment
+    env_file:
+      - .env
     volumes:
       - ./admin_app:/app
       - ./common:/app/common
       - ./config.py:/app/config.py
+    depends_on: *app-depends-on
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:1027/health', timeout=2)"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    restart: unless-stopped
     networks:
       - swipe_network
-    env_file:
-      - .env
 
 networks:
   swipe_network:
     driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
+  demo_storage:

@@ -18,6 +18,11 @@ app = FastAPI()
 add_cors(app)
 
 
+@app.get("/health", tags=["health"])
+def health():
+    return {"status": "ok", "service": "main_app"}
+
+
 app.include_router(auth_router)
 app.include_router(user_router)
 app.include_router(interests_router)

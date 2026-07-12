@@ -24,6 +24,11 @@ fastapi_app = FastAPI()
 # Добавление CORS middleware в FastAPI приложение
 add_cors(fastapi_app)
 
+
+@fastapi_app.get("/health", tags=["health"])
+def health():
+    return {"status": "ok", "service": "socket_app"}
+
 # Инициализация Socket.IO ASGI приложения
 sio = socketio.AsyncServer(async_mode='asgi', logger=socketio_logger)
 socket_app = socketio.ASGIApp(sio, other_asgi_app=fastapi_app)

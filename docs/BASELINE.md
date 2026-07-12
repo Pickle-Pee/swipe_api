@@ -180,3 +180,7 @@ API-контракты, Socket.IO events, модели/схема БД, пере
 ## Обновление: demo-конфигурация
 
 Добавлен `APP_ENV` со значениями `demo`, `development`, `production` и полный `.env.example`. В demo используются безопасные DB/JWT defaults, локальное файловое хранилище, фиксируемый demo SMS-код; реальные SMS, Firebase push, S3, Т-Банк и scheduler автоплатежей не вызываются. Production выполняет fail-fast проверку обязательных переменных без вывода их значений. Публичные endpoint-контракты и схема БД не менялись.
+
+## Обновление: локальный Docker Compose
+
+Compose дополнен PostgreSQL 16 и закреплённым Redis 7, named volumes, restart policy, readiness-зависимостями и healthchecks для инфраструктуры и четырёх приложений. В main/socket/push/admin добавлен единый `/health`. Demo Compose явно переопределяет DB/Redis/service URLs безопасными внутренними адресами и не требует Firebase credential. Миграции в startup пока не добавлены — это следующий отдельный этап.

@@ -115,11 +115,31 @@ alembic upgrade head
 docker compose config --quiet
 ```
 
-Полная сборка отложена до включения виртуализации и запуска Docker Desktop:
+После включения виртуализации и запуска Docker Desktop весь demo-backend запускается одной командой:
 
 ```powershell
-docker compose build
-docker compose up
+docker compose up --build
 ```
 
-Текущий Compose ещё не содержит локальный PostgreSQL и healthchecks; это объём следующей Docker-задачи.
+Compose поднимает PostgreSQL 16, Redis 7, main, socket, push и admin API. PostgreSQL, Redis и все приложения имеют healthchecks; приложения ожидают готовности инфраструктуры. Данные PostgreSQL, Redis и локальные demo-файлы хранятся в named volumes.
+
+Проверка состояния и логов:
+
+```powershell
+docker compose ps
+docker compose logs --no-color
+```
+
+Остановка с сохранением данных:
+
+```powershell
+docker compose down
+```
+
+Полная очистка demo-данных выполняется только явно:
+
+```powershell
+docker compose down --volumes --remove-orphans
+```
+
+Автоматическое создание таблиц намеренно отсутствует. До завершения следующей задачи с миграциями контейнеры могут быть healthy, но API, которым нужна схема БД, не заработают на пустой базе.

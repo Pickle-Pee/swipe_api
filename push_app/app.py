@@ -9,6 +9,11 @@ app = FastAPI()
 
 add_cors(app)
 
+
+@app.get("/health", tags=["health"])
+def health():
+    return {"status": "ok", "service": "push_app"}
+
 if not IS_DEMO:
     cred = credentials.Certificate(FIREBASE_CREDENTIALS_PATH)
     firebase_admin.initialize_app(cred)
