@@ -151,11 +151,12 @@ REM-02 добавила единый `safe_logging` filter/formatter для back
 
 ## 11. Обязательные blockers до test-terminal и production
 
-1. Удалить неиспользуемые Flutter `SubscriptionHttp`, `PaymentService` и `SubscriptionServices`, которые всё ещё содержат вызов legacy init endpoint и прямое legacy поведение.
-2. Закрыть legacy Flutter logging: ряд старых network classes печатает полные response bodies, включая auth refresh response. Перевести их на `SafeApiLogInterceptor` или удалить вместе с неиспользуемым кодом.
-3. После исправлений повторить весь SUB-05 E2E, test-terminal сценарии и repository secret scan.
+1. REM-04 удалила неиспользуемые Flutter legacy payment services и старые DTO.
+2. REM-05 закрыла raw Flutter auth/payment logging и добавила безопасный `SafeApiLogInterceptor`.
+3. REM-06 добавила строгий backend transport guard для всех запрещённых банковских сценариев.
+4. Перед production остаются внешние действия: test-terminal E2E, repository secret scan, HTTPS callbacks, фискальные настройки и малый реальный платёж.
 
-REM-01 закрыла legacy auto-renew P0, REM-02 — backend logging, REM-03 — небезопасный legacy init. `POST /subscriptions/init_payment` один переходный релиз остаётся deprecated guard с безусловным `410`, после чего route удаляется. Пока остальные пункты не выполнены, статус поставки: **demo ready, non-demo blocked**.
+REM-01–REM-06 закрыли внутренние P0 remediation blockers. `POST /subscriptions/init_payment` один переходный релиз остаётся deprecated guard с безусловным `410`, после чего route удаляется. Статус поставки: **demo ready; test-terminal/production требуют внешней конфигурации и ручной приёмки**.
 
 ## 12. Production checklist
 
@@ -197,7 +198,7 @@ alembic current
 alembic check
 ```
 
-Последний SUB-05 прогон: 26 backend tests passed; duplicate webhook и сохранение оплаченного срока проверены E2E. Эти тесты не делают legacy non-demo scheduler безопасным — blocker проверяется отдельно.
+Последний REM-06 прогон: 45 backend tests passed. Отдельный strict no-bank suite блокирует весь `requests` transport и проверяет demo/startup/import, отключённый recurrent, expiration maintenance, catalog/active/cancel, legacy guard, pre-Init validation, unknown/inactive plans, invalid/duplicate webhook и запуск без банковских секретов.
 
 ## Официальные источники
 
