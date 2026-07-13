@@ -95,13 +95,16 @@ services:
       dockerfile: main_app/Dockerfile
     ports:
       - "1024:1024"
-    environment: *app-environment
+    environment:
+      <<: *app-environment
+      PYTHONPATH: /opt/swipe:/app
     env_file:
       - .env
     volumes:
       - ./main_app:/app
       - ./common:/app/common
-      - ./config.py:/app/config.py
+      - ./config.py:/opt/swipe/config.py:ro
+      - ./safe_logging.py:/opt/swipe/safe_logging.py:ro
       - demo_storage:/app/.demo_storage
     depends_on: *app-depends-on
     healthcheck:
@@ -120,13 +123,16 @@ services:
       dockerfile: socket_app/Dockerfile
     ports:
       - "1025:1025"
-    environment: *app-environment
+    environment:
+      <<: *app-environment
+      PYTHONPATH: /opt/swipe:/app
     env_file:
       - .env
     volumes:
       - ./socket_app:/app
       - ./common:/app/common
-      - ./config.py:/app/config.py
+      - ./config.py:/opt/swipe/config.py:ro
+      - ./safe_logging.py:/opt/swipe/safe_logging.py:ro
     depends_on: *app-depends-on
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:1025/health', timeout=2)"]
@@ -144,13 +150,16 @@ services:
       dockerfile: push_app/Dockerfile
     ports:
       - "1026:1026"
-    environment: *app-environment
+    environment:
+      <<: *app-environment
+      PYTHONPATH: /opt/swipe:/app
     env_file:
       - .env
     volumes:
       - ./push_app:/app
       - ./common:/app/common
-      - ./config.py:/app/config.py
+      - ./config.py:/opt/swipe/config.py:ro
+      - ./safe_logging.py:/opt/swipe/safe_logging.py:ro
     depends_on: *app-depends-on
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:1026/health', timeout=2)"]
@@ -168,13 +177,16 @@ services:
       dockerfile: admin_app/Dockerfile
     ports:
       - "1027:1027"
-    environment: *app-environment
+    environment:
+      <<: *app-environment
+      PYTHONPATH: /opt/swipe:/app
     env_file:
       - .env
     volumes:
       - ./admin_app:/app
       - ./common:/app/common
-      - ./config.py:/app/config.py
+      - ./config.py:/opt/swipe/config.py:ro
+      - ./safe_logging.py:/opt/swipe/safe_logging.py:ro
     depends_on: *app-depends-on
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:1027/health', timeout=2)"]
