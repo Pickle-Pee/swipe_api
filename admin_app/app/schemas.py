@@ -17,7 +17,7 @@ class AdminResponse(BaseModel):
     created_at: datetime
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 # Схема для Авторизации
@@ -43,7 +43,7 @@ class UserResponse(BaseModel):
     updated_at: datetime
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 # Схема для Подписок
@@ -57,7 +57,7 @@ class SubscriptionResponse(BaseModel):
     renewable: bool
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 # Схема для Интересов
@@ -66,7 +66,7 @@ class InterestResponse(BaseModel):
     interest_text: str
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 # Схема для Транзакций
@@ -84,4 +84,4 @@ class TransactionResponse(BaseModel):
     rebill_id: Optional[str]
 
     class Config:
-        orm_mode = True
+        from_attributes = True

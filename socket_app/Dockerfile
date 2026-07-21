@@ -1,5 +1,5 @@
 # Используем официальный образ Python
-FROM python:3.9-slim
+FROM python:3.11-slim
 
 # Устанавливаем системные зависимости
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -18,11 +18,9 @@ WORKDIR /app
 
 # Копируем только необходимые файлы
 COPY requirements.txt /app/
-COPY wheels/ /app/wheels/
 
 # Устанавливаем зависимости
-RUN pip install --no-cache-dir /app/wheels/*.whl \
-    && pip install --no-cache-dir --trusted-host pypi.python.org -r /app/requirements.txt
+RUN pip install --no-cache-dir --trusted-host pypi.python.org -r /app/requirements.txt
 
 # **Не копируем исходный код, так как он будет монтироваться через volumes**
 

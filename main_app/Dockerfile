@@ -1,5 +1,5 @@
 # Use an official Python runtime as a parent image
-FROM python:3.9-slim
+FROM python:3.11-slim
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -8,7 +8,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libopenblas-dev \
     liblapack-dev \
     libpq-dev \
-    libmagic1 \  
+    libmagic1 \
     wget \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
@@ -18,11 +18,9 @@ WORKDIR /app
 
 # Copy the wheel files and requirements.txt into the container
 COPY requirements.txt /app/
-COPY wheels/ /app/wheels/
 
 # Install Python dependencies from wheels first, then from requirements.txt
-RUN pip install --no-cache-dir /app/wheels/*.whl \
-    && pip install --no-cache-dir --trusted-host pypi.python.org -r /app/requirements.txt
+RUN pip install --no-cache-dir --trusted-host pypi.python.org -r /app/requirements.txt
 
 # Copy the rest of the application code
 COPY . /app

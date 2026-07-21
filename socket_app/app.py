@@ -7,7 +7,7 @@ from urllib.parse import parse_qs
 # Импорт необходимых моделей и утилит
 from common.models import User, Chat, Message, Media, DateInvitations, MessageTypeEnum, VoiceMessage
 from common.utils import get_user_id_from_token, send_push_notification, get_user_push_token, get_user_name
-from config import SessionLocal, logger, engine, socketio_logger, Base, add_cors, redis_client
+from config import SessionLocal, logger, socketio_logger, add_cors, redis_client
 
 # Импорт FastAPI и Socket.IO
 import jwt
@@ -23,6 +23,11 @@ fastapi_app = FastAPI()
 
 # Добавление CORS middleware в FastAPI приложение
 add_cors(fastapi_app)
+
+
+@fastapi_app.get("/health", tags=["health"])
+def health():
+    return {"status": "ok", "service": "socket_app"}
 
 # Инициализация Socket.IO ASGI приложения
 sio = socketio.AsyncServer(async_mode='asgi', logger=socketio_logger)
@@ -75,8 +80,6 @@ async def _delete_related_entities(db, chat_id):
 
 # Обработчик события запуска приложения
 async def startup_event():
-    # Создание всех таблиц в базе данных при старте приложения
-    Base.metadata.create_all(bind=engine)
     asyncio.create_task(listen_for_verification_updates())
 
 @sio.event
@@ -379,7 +382,7 @@ async def send_message(sid, data):
                     tokens = [token.token for token in recipient.tokens if token.active]
                     if tokens:
                         for token in tokens:
-                            send_push_notification(
+                            await send_push_notification(
                                 token=token,
                                 title=title,
                                 body=message_content,
@@ -971,7 +974,9 @@ async def send_date_invitation(sid, data):
                     "content-available": 1
                 }
             )
-            socketio_logger.info(f"Push notification sent to recipient ID {recipient_id} with token {push_token}")
+            socketio_logger.info(
+                f"Push notification sent to recipient ID {recipient_id}"
+            )
 
         # Отправляем подтверждение отправителю
         await sio.emit(
@@ -1068,7 +1073,9 @@ async def respond_date_invitation(sid, data):
                         "content-available": 1
                     }
                 )
-                socketio_logger.info(f"Push notification sent to initiator ID {recipient_id} with token {push_token}")
+                socketio_logger.info(
+                    f"Push notification sent to initiator ID {recipient_id}"
+                )
             socketio_logger.info(f"Date response {response} sent to initiator ID {recipient_id} via socket")
 
 async def send_scheduled_notification():

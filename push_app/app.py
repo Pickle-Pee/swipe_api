@@ -3,18 +3,26 @@ import firebase_admin
 import os
 from firebase_admin import messaging, credentials
 from common.schemas import PushMessage
-from config import FIREBASE_CREDENTIALS_PATH, add_cors
+from config import FIREBASE_CREDENTIALS_PATH, IS_DEMO, add_cors
 
 app = FastAPI()
 
 add_cors(app)
 
-cred = credentials.Certificate(FIREBASE_CREDENTIALS_PATH)
-firebase_admin.initialize_app(cred)
+
+@app.get("/health", tags=["health"])
+def health():
+    return {"status": "ok", "service": "push_app"}
+
+if not IS_DEMO:
+    cred = credentials.Certificate(FIREBASE_CREDENTIALS_PATH)
+    firebase_admin.initialize_app(cred)
 
 
 @app.post("/send_push")
 async def send_push(msg: PushMessage):
+    if IS_DEMO:
+        return {"success": True, "response": "skipped-in-demo"}
     try:
         message = messaging.Message(
             notification=messaging.Notification(

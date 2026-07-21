@@ -2,7 +2,7 @@ import os
 from fastapi import FastAPI
 
 from common.utils import start_scheduler
-from config import engine, Base, add_cors
+from config import add_cors
 from controllers.auth_controller import router as auth_router
 from controllers.user_controller import router as user_router
 from controllers.interests_controller import router as interests_router
@@ -18,8 +18,9 @@ app = FastAPI()
 add_cors(app)
 
 
-async def startup_event():
-    Base.metadata.create_all(bind=engine)
+@app.get("/health", tags=["health"])
+def health():
+    return {"status": "ok", "service": "main_app"}
 
 
 app.include_router(auth_router)
