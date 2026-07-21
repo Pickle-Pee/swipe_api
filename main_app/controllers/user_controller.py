@@ -6,9 +6,8 @@ from fastapi import HTTPException, APIRouter, Depends, status
 from fastapi.responses import Response
 from typing import List, Optional
 
-from sqlalchemy import func
-
 from common.models import City, User, PushTokens, UserPhoto, UserGeolocation, Interest, UserInterest, Favorite
+from common.geo import distance_km
 from common.models.user_models import UserAttributes
 from common.schemas.user_schemas import UserAttributesResponse, AttributesResponseUser
 from common.utils import (
@@ -113,15 +112,12 @@ def get_user(user_id: Optional[int] = None, access_token: str = Depends(get_toke
                     current_user_longitude = current_user.user_geolocation.longitude
                     current_user_latitude = current_user.user_geolocation.latitude
 
-                    distance = db.query(
-                        func.ST_Distance(
-                            func.ST_MakePoint(float(current_user_longitude), float(current_user_latitude)),
-                            func.ST_MakePoint(float(user_longitude), float(user_latitude))
-                        )
-                    ).scalar()
-
-                    print(f"Distance: {distance}, Type: {type(distance)}")
-                    print(f"MAX_DISTANCE: {MAX_DISTANCE}, Type: {type(MAX_DISTANCE)}")
+                    distance = distance_km(
+                        float(current_user_longitude),
+                        float(current_user_latitude),
+                        float(user_longitude),
+                        float(user_latitude),
+                    )
 
                     distance_percentage = 100 - (distance / MAX_DISTANCE * 100) if distance <= MAX_DISTANCE else 0
 
@@ -174,9 +170,11 @@ def get_user(user_id: Optional[int] = None, access_token: str = Depends(get_toke
                 )
             else:
                 raise HTTPException(status_code=404, detail="Пользователь не найден")
-        except Exception as e:
+        except HTTPException:
+            raise
+        except Exception:
             db.rollback()
-            print("Error retrieving user:", e)
+            logger.exception("Error retrieving user")
             raise HTTPException(status_code=500, detail="Internal server error")
 
 

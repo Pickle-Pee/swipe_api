@@ -44,7 +44,7 @@ def deactivate_push_token(token: str):
             if token_entry:
                 token_entry.active = False
                 db.commit()
-                logger.info(f"Push-токен {token} деактивирован")
-        except Exception as e:
+                logger.info("Push token deactivated")
+        except Exception:
             db.rollback()
-            logger.exception(f"Ошибка при деактивации push-токена: {e}")
+            logger.exception("Push token deactivation failed")

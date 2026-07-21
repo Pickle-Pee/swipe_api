@@ -23,8 +23,6 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
-alembic
-alembic.ini
 alembic_dev.ini
 MANIFEST
 
@@ -104,6 +102,9 @@ celerybeat.pid
 # Environments
 .env
 .venv
+.venv-*
+.demo_storage/
+.demo_storage_test/
 env/
 venv/
 ENV/
@@ -151,6 +152,7 @@ Thumbs.db
 
 # Firebase credentials
 swipe-5da7e-firebase-adminsdk-uiosd-e4d43db1df.json
+*-firebase-adminsdk-*.json
 
 # Other sensitive or temporary files
 *.pem

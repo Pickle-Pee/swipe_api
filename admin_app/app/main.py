@@ -1,17 +1,19 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from config import Base, engine
 from .routers import auth, admin, users, interests, transactions, subscriptions, user_subscriptions
 
 # Создание всех таблиц (используйте Alembic для миграций в продакшене)
-Base.metadata.create_all(bind=engine)
-
 app = FastAPI(
     title="Admin API for Dating Service",
     description="API для администрирования сервиса знакомств",
     version="1.0.0"
 )
+
+
+@app.get("/health", tags=["health"])
+def health():
+    return {"status": "ok", "service": "admin_app"}
 
 # Определите список разрешенных origins
 # origins = [

@@ -5,7 +5,7 @@ from fastapi.security import HTTPBearer
 from socketio import AsyncClient
 
 from .user_utils import deactivate_push_token
-from config import logger
+from config import IS_DEMO, PUSH_URL, logger
 from PIL import Image
 import io
 
@@ -13,7 +13,10 @@ security = HTTPBearer()
 sio_client = AsyncClient()
 
 
-def send_push_notification(token: str, title: str, body: str, data: dict):
+async def send_push_notification(token: str, title: str, body: str, data: dict, **_options):
+    if IS_DEMO:
+        logger.info("Push notification skipped in demo mode")
+        return None
     push_message = {
         "title": title,
         "body": body,
@@ -22,7 +25,7 @@ def send_push_notification(token: str, title: str, body: str, data: dict):
     }
     try:
         response = requests.post(
-            "http://localhost:1026/send_push",
+            PUSH_URL,
             json=push_message
         )
         if response.status_code != 200:
@@ -31,9 +34,11 @@ def send_push_notification(token: str, title: str, body: str, data: dict):
             if 'not registered' in error_message or 'invalid' in error_message:
                 # Деактивируем токен в базе данных
                 deactivate_push_token(token)
-            logger.error(f"Ошибка при отправке push-уведомления: {response.text}")
-    except Exception as e:
-        logger.exception(f"Сбой при отправке push-уведомления: {e}")
+            logger.error(
+                "Push notification failed http_status=%s", response.status_code
+            )
+    except Exception:
+        logger.exception("Push notification transport failed")
 
 
 async def send_event_to_socketio(url, event_name, event_data):
